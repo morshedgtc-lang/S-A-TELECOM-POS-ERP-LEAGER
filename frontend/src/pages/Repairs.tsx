@@ -194,7 +194,20 @@ function JobDetail({ id, onClose, onChanged }: { id: number; onClose: () => void
   const accounts = useAccounts();
   const [job, setJob] = useState<RepairDetail | null>(null);
   const [error, setError] = useState('');
-  const [mode, setMode] = useState<'none' | 'out_work' | 'deliver'>('none');
+  const [mode, setMode] = useState<'none' | 'out_work' | 'deliver' | 'cancel'>('none');
+  const isOwner = useAuth().user?.role === 'owner';
+
+  /** Super Admin: cancel a wrong job (advance refunded, parts back to stock, technician wage reversed). */
+  async function cancelJob(jobId: number, accountId: number | null) {
+    setError('');
+    try {
+      await api('DELETE', `/repairs/${jobId}`, { accountId });
+      onChanged();
+      onClose();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Cancel failed');
+    }
+  }
 
   const load = useCallback(() => {
     api<RepairDetail>('GET', `/repairs/${id}`).then(setJob).catch((e: Error) => setError(e.message));
@@ -226,7 +239,12 @@ function JobDetail({ id, onClose, onChanged }: { id: number; onClose: () => void
     <Modal title={`${job.jobNo} · ${job.device}`} onClose={onClose} wide>
       <div className="detail-head">
         <StatusBadge status={job.status} outcome={job.outcome} />
-        <button className="ghost" onClick={async () => printJobCard(job, await getShop())}><i className="fa-solid fa-print" /> {t('জব কার্ড প্রিন্ট')}</button>
+        <div className="inline" style={{ margin: 0 }}>
+          <button className="ghost" onClick={async () => printJobCard(job, await getShop())}><i className="fa-solid fa-print" /> {t('জব কার্ড প্রিন্ট')}</button>
+          {isOwner && job.status !== 'delivered' && (
+            <button className="ghost danger" onClick={() => setMode('cancel')}><i className="fa-solid fa-ban" /> {t('জব বাতিল')}</button>
+          )}
+        </div>
       </div>
 
       <div className="info-grid">
@@ -259,7 +277,7 @@ function JobDetail({ id, onClose, onChanged }: { id: number; onClose: () => void
           {NEXT_STATUS[job.status].map((s) => (
             s === 'out_work'
               ? <button key={s} style={{ background: STATUS[s].color, borderColor: STATUS[s].color }} onClick={() => setMode('out_work')}>
-                  <i className="fa-solid fa-truck-fast" /> কারিগরের কাছে পাঠান
+                  <i className="fa-solid fa-truck-fast" /> {t('কারিগরের কাছে পাঠান')}
                 </button>
               : <button key={s} style={{ background: STATUS[s].color, borderColor: STATUS[s].color }}
                   onClick={() => run(() => api('POST', `/repairs/${job.id}/status`, { status: s }))}>
@@ -271,13 +289,14 @@ function JobDetail({ id, onClose, onChanged }: { id: number; onClose: () => void
           )}
           {(job.status === 'success' || job.status === 'failed') && (
             <button style={{ background: STATUS.delivered.color, borderColor: STATUS.delivered.color }} onClick={() => setMode('deliver')}>
-              <i className="fa-solid fa-hand-holding" /> ডেলিভারি দিন
+              <i className="fa-solid fa-hand-holding" /> {t('ডেলিভারি দিন')}
             </button>
           )}
         </div>
       )}
 
       {mode === 'out_work' && <OutWorkForm job={job} onSubmit={(body) => run(() => api('POST', `/repairs/${job.id}/status`, body))} />}
+      {mode === 'cancel' && <CancelJobForm job={job} accounts={accounts} onSubmit={(acc) => cancelJob(job.id, acc)} />}
       {mode === 'deliver' && (
         <DeliverForm job={job} partsTotal={partsTotal} accounts={accounts}
           onSubmit={(body) => run(async () => {
@@ -327,6 +346,27 @@ function JobDetail({ id, onClose, onChanged }: { id: number; onClose: () => void
   );
 }
 
+function CancelJobForm({ job, accounts, onSubmit }: { job: RepairDetail; accounts: Account[]; onSubmit: (accountId: number | null) => void }) {
+  const [accountId, setAccountId] = useState('');
+  const account = accountId || String(accounts[0]?.id ?? '');
+  return (
+    <div className="sub-form danger-zone">
+      <h4>{t('জব বাতিল (ভুল এন্ট্রি)')}</h4>
+      <p className="muted">{t('জবটি মুছে যাবে। পার্টস স্টকে ফিরবে এবং কারিগরের মজুরি বাদ যাবে।')}</p>
+      {job.advance > 0 && (
+        <label>{t('অগ্রিম ৳{amount} যে একাউন্ট থেকে ফেরত দেবেন', { amount: money(job.advance) })}
+          <select value={account} onChange={(e) => setAccountId(e.target.value)}>
+            {accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+          </select>
+        </label>
+      )}
+      <button className="primary btn-danger" onClick={() => {
+        if (window.confirm(t('{job} স্থায়ীভাবে বাতিল করবেন?', { job: job.jobNo }))) onSubmit(job.advance > 0 ? Number(account) : null);
+      }}>{t('জব বাতিল করুন')}</button>
+    </div>
+  );
+}
+
 function Info({ label, value }: { label: string; value: string }) {
   return <div className="info"><span>{label}</span><b>{value}</b></div>;
 }
@@ -353,7 +393,7 @@ function OutWorkForm({ job, onSubmit }: { job: RepairDetail; onSubmit: (body: ob
         <label className="span-2">{t('কী কাজ করতে হবে *')}<input value={note} onChange={(e) => setNote(e.target.value)} /></label>
       </div>
       <button className="primary" onClick={() => onSubmit({ status: 'out_work', technicianId: Number(techId), technicianCost: Number(cost) || 0, note })}>
-        পাঠান
+        {t('পাঠান')}
       </button>
     </div>
   );

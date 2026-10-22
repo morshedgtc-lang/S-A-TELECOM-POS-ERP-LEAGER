@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { hasPerm, requirePerm } from '../lib/auth.js';
+import { hasPerm, requireOwner, requirePerm } from '../lib/auth.js';
 import { tx } from '../lib/db.js';
 import { audit, httpError, invoiceNo, requireText, round2, toMoney, toPositiveInt } from '../lib/http.js';
 import { moveMoney } from '../lib/ledger.js';
@@ -335,6 +335,37 @@ export function repairsRouter(db) {
     res.json(getJob(db, job.id, req.user));
   });
 
+  /**
+   * Cancels a wrong job that is not delivered: parts go back to stock, the technician wage booking is
+   * reversed and any advance is refunded from the chosen account. Delivered jobs cannot be removed.
+   */
+  router.delete('/:id', requireOwner, (req, res) => {
+    const job = loadOpenJob(db, req.params.id);
+    const accountId = req.body?.accountId ? Number(req.body.accountId) : null;
+    if (job.advance > 0 && !accountId) throw httpError(400, 'Choose the account to refund the advance from');
+    tx(db, () => {
+      for (const p of db.prepare('SELECT * FROM repair_job_parts WHERE job_id = ? AND restocked = 0').all(job.id)) {
+        db.prepare('UPDATE products SET stock = stock + ? WHERE id = ?').run(p.qty, p.product_id);
+      }
+      if (job.technician_id && job.technician_cost > 0) {
+        const tech = db.prepare('SELECT * FROM technicians WHERE id = ?').get(job.technician_id);
+        const reversal = Math.min(tech.balance, job.technician_cost);
+        if (reversal > 0) {
+          db.prepare('UPDATE technicians SET balance = ? WHERE id = ?').run(round2(tech.balance - reversal), tech.id);
+          db.prepare(`INSERT INTO technician_ledger (technician_id, kind, amount, job_id, note, created_by)
+                      VALUES (?, 'adjustment', ?, NULL, ?, ?)`).run(tech.id, -reversal, `Cancelled ${job.job_no}`, req.user.id);
+        }
+      }
+      if (job.advance > 0) {
+        moveMoney(db, { accountId, direction: 'out', amount: job.advance, refType: 'repair_refund', refId: job.id, note: `Cancelled ${job.job_no}`, userId: req.user.id });
+      }
+      db.prepare('UPDATE technician_ledger SET job_id = NULL WHERE job_id = ?').run(job.id);
+      db.prepare('DELETE FROM repair_jobs WHERE id = ?').run(job.id);
+    });
+    audit(db, req.user, 'repair_cancel', job.job_no, `device=${job.device}; advance_refunded=${job.advance}`);
+    res.json({ deleted: true });
+  });
+
   return router;
 }
 
@@ -426,6 +457,19 @@ export function techniciansRouter(db) {
     });
     audit(db, req.user, 'technician_payment', t.name, `amount=${amount}`);
     res.status(201).json({ id: t.id, balance: round2(t.balance - amount) });
+  });
+
+  /** Permanent delete for a wrong entry: only when nothing is owed and no job or payment history exists. */
+  router.delete('/:id', requireOwner, (req, res) => {
+    const t = db.prepare('SELECT * FROM technicians WHERE id = ?').get(req.params.id);
+    if (!t) throw httpError(404, 'Technician not found');
+    if (t.balance > 0.004) throw httpError(409, `${t.name} is still owed ${round2(t.balance)}; pay it before deleting`);
+    const used = db.prepare('SELECT COUNT(*) AS n FROM repair_jobs WHERE technician_id = ?').get(t.id).n
+      + db.prepare('SELECT COUNT(*) AS n FROM technician_ledger WHERE technician_id = ?').get(t.id).n;
+    if (used > 0) throw httpError(409, `${t.name} has job history; set Inactive instead`);
+    db.prepare('DELETE FROM technicians WHERE id = ?').run(t.id);
+    audit(db, req.user, 'technician_delete', t.name, `id=${t.id}`);
+    res.json({ deleted: true });
   });
 
   return router;

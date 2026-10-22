@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { hasPerm, requirePerm } from '../lib/auth.js';
+import { hasPerm, requireOwner, requirePerm } from '../lib/auth.js';
 import { audit, httpError, requireText, toMoney, toNumber } from '../lib/http.js';
 import { tx } from '../lib/db.js';
 
@@ -29,6 +29,32 @@ export function catalogRouter(db) {
     audit(db, req.user, 'brand_create', name);
     res.status(201).json({ id: Number(result.lastInsertRowid) });
   });
+
+  // Rename / delete for categories and brands. Deleting one leaves its products uncategorised (FK ON DELETE SET NULL).
+  for (const [table, label] of [['categories', 'Category'], ['brands', 'Brand']]) {
+    router.patch(`/${table}/:id`, requirePerm('manageProducts'), (req, res) => {
+      const row = db.prepare(`SELECT * FROM ${table} WHERE id = ?`).get(req.params.id);
+      if (!row) throw httpError(404, `${label} not found`);
+      const name = req.body?.name === undefined ? row.name : requireText(req.body.name, `${label} name`);
+      if (db.prepare(`SELECT 1 FROM ${table} WHERE name = ? AND id <> ?`).get(name, row.id)) throw httpError(409, `${label} "${name}" already exists`);
+      db.prepare(`UPDATE ${table} SET name = ? WHERE id = ?`).run(name, row.id);
+      if (table === 'categories' && req.body?.emoji !== undefined) {
+        db.prepare('UPDATE categories SET emoji = ? WHERE id = ?').run(req.body.emoji || null, row.id);
+      }
+      audit(db, req.user, `${table === 'categories' ? 'category' : 'brand'}_update`, `${row.name} -> ${name}`);
+      res.json({ id: row.id });
+    });
+
+    router.delete(`/${table}/:id`, requireOwner, (req, res) => {
+      const row = db.prepare(`SELECT * FROM ${table} WHERE id = ?`).get(req.params.id);
+      if (!row) throw httpError(404, `${label} not found`);
+      const col = table === 'categories' ? 'category_id' : 'brand_id';
+      const products = db.prepare(`SELECT COUNT(*) AS n FROM products WHERE ${col} = ?`).get(row.id).n;
+      db.prepare(`DELETE FROM ${table} WHERE id = ?`).run(row.id);
+      audit(db, req.user, `${table === 'categories' ? 'category' : 'brand'}_delete`, row.name, `products_unlinked=${products}`);
+      res.json({ deleted: true, productsUnlinked: products });
+    });
+  }
 
   return router;
 }
@@ -67,12 +93,14 @@ export function productsRouter(db) {
   router.get('/', (req, res) => {
     const q = String(req.query.q ?? '').trim();
     const categoryId = req.query.categoryId ? Number(req.query.categoryId) : null;
+    // status: active (default), archived, or all
+    const status = String(req.query.status ?? 'active');
     const rows = db.prepare(`${PRODUCT_SELECT}
-      WHERE p.active = 1
+      WHERE (? = 'all' OR p.active = ?)
         AND (? = '' OR p.name LIKE ? OR p.sku LIKE ?)
         AND (? IS NULL OR p.category_id = ?)
       ORDER BY p.name`)
-      .all(q, `%${q}%`, `%${q}%`, categoryId, categoryId);
+      .all(status, status === 'archived' ? 0 : 1, q, `%${q}%`, `%${q}%`, categoryId, categoryId);
     const withCost = hasPerm(req.user, 'viewCost');
     res.json(rows.map((r) => toProduct(r, withCost)));
   });
@@ -208,6 +236,20 @@ export function productsRouter(db) {
     db.prepare('UPDATE products SET stock = stock + ? WHERE id = ?').run(change, row.id);
     audit(db, req.user, 'stock_adjust', row.name, `change=${change}; reason=${reason}`);
     res.json({ id: row.id, stock: row.stock + change });
+  });
+
+  /** Permanent delete for a wrong entry. Products with any history must be archived instead. */
+  router.delete('/:id', requireOwner, (req, res) => {
+    const row = db.prepare('SELECT * FROM products WHERE id = ?').get(req.params.id);
+    if (!row) throw httpError(404, 'Product not found');
+    const used = ['sale_items', 'purchase_items', 'repair_job_parts', 'stock_units']
+      .reduce((n, tbl) => n + db.prepare(`SELECT COUNT(*) AS n FROM ${tbl} WHERE product_id = ?`).get(row.id).n, 0);
+    if (used > 0) {
+      throw httpError(409, `"${row.name}" has sales, purchase or stock history, so it cannot be deleted. Archive it instead.`);
+    }
+    db.prepare('DELETE FROM products WHERE id = ?').run(row.id);
+    audit(db, req.user, 'product_delete', row.name, `id=${row.id}; sku=${row.sku ?? ''}; stock=${row.stock}`);
+    res.json({ deleted: true });
   });
 
   return router;

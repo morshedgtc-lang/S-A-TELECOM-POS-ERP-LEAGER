@@ -44,3 +44,13 @@
   .pick { grid-template-columns: 1fr auto; }
   .lbl.preview { transform: scale(1.3); }
 }
+
+/* Edit / delete controls */
+button.ghost.danger, .ghost.danger i { color: var(--red); }
+button.btn-danger { background: var(--red); border-color: var(--red); color: #fff; }
+.row-actions { white-space: nowrap; text-align: right; }
+.danger-zone { border-color: color-mix(in srgb, var(--red) 45%, transparent); background: color-mix(in srgb, var(--red) 6%, var(--bg)); }
+.chip-list { list-style: none; padding: 0; margin: 0 0 12px; display: flex; flex-wrap: wrap; gap: 6px; }
+.chip-list li { display: inline-flex; align-items: center; gap: 2px; background: var(--soft); border: 1px solid var(--line); border-radius: 18px; padding: 2px 4px 2px 12px; font-size: 14px; }
+.chip-list li button { padding: 4px 6px; }
+.catalog-block h4 { margin-top: 6px; }

@@ -69,6 +69,7 @@ cd frontend && npm run build
 | IMEI / serial stock and IMEI lookup | yes | yes |
 | Barcodes: camera scanner, USB scanner, price check, auto codes, label printing (thermal / A4) | yes | yes |
 | App download page with QR codes (Android APK, iPhone home-screen app) | — | yes |
+| Edit wrong names; Super Admin delete with archive / reverse rules | yes | yes |
 | Purchases | yes | yes |
 | Customers & suppliers, settlements | yes | yes |
 | Dealers: dues list, statement, collect against bills, dealer price, credit limit, WhatsApp reminder | yes | yes |

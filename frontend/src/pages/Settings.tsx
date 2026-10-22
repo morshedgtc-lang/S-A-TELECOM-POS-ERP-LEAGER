@@ -76,6 +76,18 @@ function Staff() {
     }
   }
 
+  /** Super Admin only. Accounts that already created records must be blocked instead. */
+  async function removeUser(u: StaffUser) {
+    if (!window.confirm(t('"{name}" স্থায়ীভাবে মুছে ফেলবেন? এটি ফেরত আনা যাবে না।', { name: u.name }))) return;
+    try {
+      await api('DELETE', `/users/${encodeURIComponent(u.id)}`);
+      setMessage({ ok: true, text: t('{name} মুছে ফেলা হয়েছে', { name: u.name }) });
+      load();
+    } catch (err) {
+      setMessage({ ok: false, text: err instanceof Error ? err.message : 'Delete failed' });
+    }
+  }
+
   async function toggle(u: StaffUser) {
     try {
       await api('PATCH', `/users/${encodeURIComponent(u.id)}`, { active: !u.active });
@@ -112,6 +124,9 @@ function Staff() {
                   <button className="ghost" onClick={() => resetPassword(u)} title="Password"><i className="fa-solid fa-key" /></button>
                 )}
                 {u.id !== me?.id && (me?.role === 'owner' || ROLE_RANK[u.role] < ROLE_RANK[me?.role ?? 'staff']) && <button className="ghost" onClick={() => toggle(u)}>{u.active ? t('ব্লক') : t('চালু')}</button>}
+                {me?.role === 'owner' && u.id !== me.id && (
+                  <button className="ghost danger" onClick={() => removeUser(u)} title={t('মুছুন')}><i className="fa-solid fa-trash" /></button>
+                )}
               </td>
             </tr>
           ))}

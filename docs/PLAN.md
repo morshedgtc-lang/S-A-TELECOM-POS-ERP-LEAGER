@@ -39,6 +39,8 @@ A shop system for a mobile phone repair and sales business: repairs, spare parts
 | `manager` | Manager | — | Sales, repairs, purchases, products, parties, money, reports |
 | `staff` | Staff | — | POS sales and repair desk |
 
+Only the **Super Admin** can delete. Wrong entries with no history (a mistyped product, a duplicate customer, an unused account) are deleted permanently. Records with history cannot be deleted, because invoices and accounts must stay correct: products are **archived** (hidden, restorable), users and technicians are blocked or set inactive. Deleting an expense puts the money back into its account; cancelling an undelivered repair job refunds the advance, returns parts to stock and reverses the technician wage. Every delete is in the audit log.
+
 Per-user permissions can be changed for Manager and Staff. The last active Super Admin cannot be removed. Everyone can change their own password from the user menu.
 
 ## 4. Look and language

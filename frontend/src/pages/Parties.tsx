@@ -2,13 +2,15 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { api, money } from '../api';
 import { useAuth } from '../auth';
 import { CollectModal, DealerSettingsModal, sendReminder, StatementModal } from '../components/DealerTools';
+import Modal from '../components/Modal';
 import type { Account, Party } from '../types';
 import { t } from '../i18n';
 
 type Kind = 'customers' | 'suppliers';
 
 export default function Parties() {
-  const { can } = useAuth();
+  const { can, user } = useAuth();
+  const isOwner = user?.role === 'owner';
   const [kind, setKind] = useState<Kind>('customers');
   const [list, setList] = useState<Party[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -17,7 +19,7 @@ export default function Parties() {
   const [form, setForm] = useState({ name: '', mobile: '', type: 'retail', creditLimit: '', dealerDiscount: '' });
   const [settleAmount, setSettleAmount] = useState('');
   const [settleAccount, setSettleAccount] = useState('');
-  const [modal, setModal] = useState<'statement' | 'collect' | 'settings' | null>(null);
+  const [modal, setModal] = useState<'statement' | 'collect' | 'settings' | 'edit' | null>(null);
   const [message, setMessage] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
 
   const reload = () => api<Party[]>('GET', `/${kind}`).then((rows) => {
@@ -45,6 +47,19 @@ export default function Parties() {
       reload();
     } catch (err) {
       setMessage({ kind: 'error', text: err instanceof Error ? err.message : 'Save failed' });
+    }
+  }
+
+  /** Super Admin only: removes a wrong entry that has no balance and no history. */
+  async function removeParty(p: Party) {
+    if (!window.confirm(t('"{name}" স্থায়ীভাবে মুছে ফেলবেন? এটি ফেরত আনা যাবে না।', { name: p.name }))) return;
+    try {
+      await api('DELETE', `/${kind}/${p.id}`);
+      setSelected(null);
+      setMessage({ kind: 'ok', text: t('{name} মুছে ফেলা হয়েছে', { name: p.name }) });
+      reload();
+    } catch (err) {
+      setMessage({ kind: 'error', text: err instanceof Error ? err.message : 'Delete failed' });
     }
   }
 
@@ -121,6 +136,12 @@ export default function Parties() {
                 {can('manageParties') && (
                   <button className="ghost" onClick={() => setModal('settings')}><i className="fa-solid fa-sliders" /> {t('ডিলার সেটিংস')}</button>
                 )}
+                {can('manageParties') && (
+                  <button className="ghost" onClick={() => setModal('edit')}><i className="fa-solid fa-pen" /> {t('এডিট')}</button>
+                )}
+                {isOwner && (
+                  <button className="ghost danger" onClick={() => removeParty(selected)}><i className="fa-solid fa-trash" /> {t('মুছুন')}</button>
+                )}
               </div>
             </div>
           )}
@@ -137,6 +158,13 @@ export default function Parties() {
                 </label>
               </div>
               <button className="primary" onClick={paySupplier}>{t('পেমেন্ট সেভ')}</button>
+            </div>
+          )}
+
+          {selected && !isCustomer && (can('manageParties') || isOwner) && (
+            <div className="action-bar">
+              {can('manageParties') && <button className="ghost" onClick={() => setModal('edit')}><i className="fa-solid fa-pen" /> {t('এডিট')}</button>}
+              {isOwner && <button className="ghost danger" onClick={() => removeParty(selected)}><i className="fa-solid fa-trash" /> {t('মুছুন')}</button>}
             </div>
           )}
         </div>
@@ -171,9 +199,41 @@ export default function Parties() {
       {selected && modal === 'collect' && (
         <CollectModal customer={selected} onClose={() => setModal(null)} onDone={() => { setModal(null); reload(); }} />
       )}
+      {selected && modal === 'edit' && (
+        <PartyEditModal kind={kind} party={selected} onClose={() => setModal(null)}
+          onSaved={() => { setModal(null); reload(); setMessage({ kind: 'ok', text: t('সংরক্ষিত হয়েছে') }); }} />
+      )}
       {selected && modal === 'settings' && (
         <DealerSettingsModal party={selected} onClose={() => setModal(null)} onSaved={() => { setModal(null); reload(); }} />
       )}
     </section>
+  );
+}
+
+/** Fix a wrong name, mobile or address. */
+function PartyEditModal({ kind, party, onClose, onSaved }: { kind: Kind; party: Party; onClose: () => void; onSaved: () => void }) {
+  const [f, setF] = useState({ name: party.name, mobile: party.mobile ?? '', address: party.address ?? '' });
+  const [error, setError] = useState('');
+
+  async function save(e: FormEvent) {
+    e.preventDefault();
+    try {
+      await api('PATCH', `/${kind}/${party.id}`, { name: f.name, mobile: f.mobile.trim() || null, address: f.address.trim() || null });
+      onSaved();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Save failed');
+    }
+  }
+
+  return (
+    <Modal title={`${t('এডিট')} — ${party.name}`} onClose={onClose}>
+      <form onSubmit={save}>
+        <label>{t('নাম')}<input required value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></label>
+        <label>{t('মোবাইল')}<input value={f.mobile} inputMode="tel" onChange={(e) => setF({ ...f, mobile: e.target.value })} /></label>
+        <label>{t('ঠিকানা')}<input value={f.address} onChange={(e) => setF({ ...f, address: e.target.value })} /></label>
+        {error && <div className="error">{error}</div>}
+        <button className="primary">{t('সেভ')}</button>
+      </form>
+    </Modal>
   );
 }

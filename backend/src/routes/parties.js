@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { requirePerm } from '../lib/auth.js';
+import { requireOwner, requirePerm } from '../lib/auth.js';
 import { audit, httpError, requireText, round2, toMoney } from '../lib/http.js';
 import { tx } from '../lib/db.js';
 import { moveMoney } from '../lib/ledger.js';
@@ -103,6 +103,24 @@ function partyRouter(db, { table, kind }) {
     });
     audit(db, req.user, settleRef, party.name, `amount=${amount}`);
     res.status(201).json({ id: party.id, balance: round2(party.balance - amount) });
+  });
+
+  /** Permanent delete for a wrong entry: only with zero balance and no invoices or payments. */
+  router.delete('/:id', requireOwner, (req, res) => {
+    const party = db.prepare(`SELECT * FROM ${table} WHERE id = ?`).get(req.params.id);
+    if (!party) throw httpError(404, `${kind} not found`);
+    if (Math.abs(party.balance) > 0.004) {
+      throw httpError(409, `${party.name} still has a balance of ${round2(party.balance)}; settle it before deleting`);
+    }
+    const refs = isCustomer
+      ? [['sales', 'customer_id'], ['repair_jobs', 'customer_id'], ['due_allocations', 'customer_id']]
+      : [['purchases', 'supplier_id']];
+    const used = refs.reduce((n, [tbl, col]) => n + db.prepare(`SELECT COUNT(*) AS n FROM ${tbl} WHERE ${col} = ?`).get(party.id).n, 0)
+      + db.prepare('SELECT COUNT(*) AS n FROM payments WHERE ref_type = ? AND ref_id = ?').get(settleRef, party.id).n;
+    if (used > 0) throw httpError(409, `${party.name} has invoices or payments, so it cannot be deleted (the history must stay correct)`);
+    db.prepare(`DELETE FROM ${table} WHERE id = ?`).run(party.id);
+    audit(db, req.user, `${kind}_delete`, party.name, `id=${party.id}; mobile=${party.mobile ?? ''}`);
+    res.json({ deleted: true });
   });
 
   return router;

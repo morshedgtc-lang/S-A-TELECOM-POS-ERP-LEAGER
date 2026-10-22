@@ -106,6 +106,12 @@ export function requireAuth(db) {
   };
 }
 
+/** Deleting records is reserved for the Super Admin (owner), even if other roles have every permission. */
+export function requireOwner(req, _res, next) {
+  if (req.user?.role === 'owner') return next();
+  next(httpError(403, 'Only the Super Admin can delete records'));
+}
+
 export function requirePerm(action) {
   return (req, _res, next) => {
     if (hasPerm(req.user, action)) return next();

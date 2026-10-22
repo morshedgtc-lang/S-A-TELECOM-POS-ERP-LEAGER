@@ -30,6 +30,7 @@ export const REF_TYPE_BN: Record<string, string> = {
   repair_refund: 'সার্ভিস রিফান্ড',
   technician_payment: 'কারিগর মজুরি',
   sale_return: 'বিক্রয় রিটার্ন',
+  expense_reversal: 'খরচ বাতিল (ফেরত)',
 };
 
 /** Formats an SQLite UTC timestamp ("YYYY-MM-DD HH:MM:SS") in local time. */

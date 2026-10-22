@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { hasPerm, requirePerm } from '../lib/auth.js';
+import { hasPerm, requireOwner, requirePerm } from '../lib/auth.js';
 import { tx } from '../lib/db.js';
 import { audit, dateClauses, httpError, requireText, round2, toMoney } from '../lib/http.js';
 import { moveMoney } from '../lib/ledger.js';
@@ -72,6 +72,21 @@ export function expensesRouter(db) {
     });
     audit(db, req.user, 'expense_create', category, `amount=${amount}`);
     res.status(201).json({ id });
+  });
+
+  /** Removes a wrong expense and puts the money back into its account (both movements stay in the cash book). */
+  router.delete('/:id', requireOwner, (req, res) => {
+    const e = db.prepare('SELECT * FROM expenses WHERE id = ?').get(req.params.id);
+    if (!e) throw httpError(404, 'Expense not found');
+    tx(db, () => {
+      moveMoney(db, {
+        accountId: e.account_id, direction: 'in', amount: e.amount, refType: 'expense_reversal', refId: e.id,
+        note: `Deleted expense: ${e.category}`, userId: req.user.id,
+      });
+      db.prepare('DELETE FROM expenses WHERE id = ?').run(e.id);
+    });
+    audit(db, req.user, 'expense_delete', e.category, `id=${e.id}; amount=${e.amount}; created=${e.created_at}`);
+    res.json({ deleted: true });
   });
 
   return router;

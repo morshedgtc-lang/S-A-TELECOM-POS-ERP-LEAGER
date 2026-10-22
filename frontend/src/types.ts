@@ -39,6 +39,8 @@ export interface Product {
   sku: string | null;
   categoryId: number | null;
   categoryName: string | null;
+  brandId: number | null;
+  active: boolean;
   salePrice: number;
   brandName?: string | null;
   dealerPrice: number | null;

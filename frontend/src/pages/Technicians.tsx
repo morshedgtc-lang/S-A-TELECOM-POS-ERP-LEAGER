@@ -117,6 +117,19 @@ function TechnicianLedger({ tech, onClose, onChanged }: { tech: Technician; onCl
     }
   }
 
+  const isOwner = useAuth().user?.role === 'owner';
+
+  async function removeTech() {
+    if (!window.confirm(t('"{name}" স্থায়ীভাবে মুছে ফেলবেন? এটি ফেরত আনা যাবে না।', { name: tech.name }))) return;
+    try {
+      await api('DELETE', `/technicians/${tech.id}`);
+      onChanged();
+      onClose();
+    } catch (e) {
+      setMessage({ ok: false, text: e instanceof Error ? e.message : 'Delete failed' });
+    }
+  }
+
   async function toggleActive() {
     await api('PATCH', `/technicians/${tech.id}`, { active: !tech.active });
     onChanged();
@@ -127,7 +140,10 @@ function TechnicianLedger({ tech, onClose, onChanged }: { tech: Technician; onCl
     <Modal title={t('{name} — খাতা', { name: tech.name })} onClose={onClose} wide>
       <div className="detail-head">
         <div className="big-due">{t('বকেয়া: ৳')}{money(balance)}</div>
-        {can('manageRepairs') && <button className="ghost" onClick={toggleActive}>{tech.active ? t('Inactive করুন') : t('Active করুন')}</button>}
+        <div className="inline" style={{ margin: 0 }}>
+          {can('manageRepairs') && <button className="ghost" onClick={toggleActive}>{tech.active ? t('Inactive করুন') : t('Active করুন')}</button>}
+          {isOwner && <button className="ghost danger" onClick={removeTech}><i className="fa-solid fa-trash" /> {t('মুছুন')}</button>}
+        </div>
       </div>
       {message && <div className={message.ok ? 'ok' : 'error'}>{message.text}</div>}
       {can('manageMoney') && balance > 0 && (

@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { api, money } from '../api';
 import type { Account, Expense } from '../types';
 import { t } from '../i18n';
+import { useAuth } from '../auth';
 
 export default function Expenses() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
@@ -11,6 +12,19 @@ export default function Expenses() {
   const [accountId, setAccountId] = useState('');
   const [note, setNote] = useState('');
   const [message, setMessage] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
+  const isOwner = useAuth().user?.role === 'owner';
+
+  /** Super Admin only: the money goes back to the account it was paid from. */
+  async function removeExpense(x: Expense) {
+    if (!window.confirm(t('"{name}" খরচটি মুছবেন? ৳{amount} আবার {account} একাউন্টে ফেরত যাবে।', { name: x.category, amount: money(x.amount), account: x.accountName }))) return;
+    try {
+      await api('DELETE', `/expenses/${x.id}`);
+      setMessage({ kind: 'ok', text: t('খরচ মুছে টাকা ফেরত দেওয়া হয়েছে') });
+      reload();
+    } catch (err) {
+      setMessage({ kind: 'error', text: err instanceof Error ? err.message : 'Delete failed' });
+    }
+  }
 
   const reload = () => api<Expense[]>('GET', '/expenses').then(setExpenses).catch((e: Error) =>
     setMessage({ kind: 'error', text: e.message }));
@@ -45,12 +59,15 @@ export default function Expenses() {
       <div className="two-col">
         <div className="card">
           <table>
-            <thead><tr><th>{t('তারিখ')}</th><th>{t('খাত')}</th><th>{t('একাউন্ট')}</th><th className="num">{t('পরিমাণ')}</th></tr></thead>
+            <thead><tr><th>{t('তারিখ')}</th><th>{t('খাত')}</th><th>{t('একাউন্ট')}</th><th className="num">{t('পরিমাণ')}</th>{isOwner && <th />}</tr></thead>
             <tbody>
               {expenses.map((x) => (
                 <tr key={x.id}>
                   <td>{x.createdAt.slice(0, 10)}</td><td>{x.category}{x.note && <small className="muted"> {x.note}</small>}</td>
                   <td>{x.accountName}</td><td className="num">{money(x.amount)}</td>
+                  {isOwner && (
+                    <td><button className="ghost danger" title={t('মুছুন')} onClick={() => removeExpense(x)}><i className="fa-solid fa-trash" /></button></td>
+                  )}
                 </tr>
               ))}
               {expenses.length === 0 && <tr><td colSpan={4} className="muted">{t('এখনো কোনো খরচ নেই।')}</td></tr>}

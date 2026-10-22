@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { ACTIONS, hashPassword, requirePerm, ROLE_PERMISSIONS, ROLE_RANK, signToken, toUser, verifyPassword } from '../lib/auth.js';
+import { ACTIONS, hashPassword, requireOwner, requirePerm, ROLE_PERMISSIONS, ROLE_RANK, signToken, toUser, verifyPassword } from '../lib/auth.js';
 import { audit, httpError, requireText, toMoney } from '../lib/http.js';
 
 
@@ -81,6 +81,23 @@ export function usersRouter(db) {
       );
     audit(db, req.user, 'staff_update', row.id, `role=${role}`);
     res.json({ id: row.id });
+  });
+
+  /** Permanent delete for a wrong account. Accounts that created records must be blocked instead. */
+  router.delete('/:id', requireOwner, (req, res) => {
+    const row = db.prepare('SELECT * FROM users WHERE id = ?').get(req.params.id);
+    if (!row) throw httpError(404, 'User not found');
+    if (row.id === req.user.id) throw httpError(400, 'You cannot delete your own account');
+    if (row.role === 'owner') {
+      const others = db.prepare("SELECT COUNT(*) AS n FROM users WHERE role = 'owner' AND active = 1 AND id <> ?").get(row.id).n;
+      if (others === 0) throw httpError(400, 'At least one active Super Admin must remain');
+    }
+    const used = ['sales', 'purchases', 'expenses', 'repair_jobs', 'payments', 'repair_job_events', 'technician_ledger', 'sale_returns']
+      .reduce((n, tbl) => n + db.prepare(`SELECT COUNT(*) AS n FROM ${tbl} WHERE created_by = ?`).get(row.id).n, 0);
+    if (used > 0) throw httpError(409, `${row.name} has created records; block the account instead of deleting it`);
+    db.prepare('DELETE FROM users WHERE id = ?').run(row.id);
+    audit(db, req.user, 'staff_delete', row.id, `name=${row.name}; role=${row.role}`);
+    res.json({ deleted: true });
   });
 
   return router;
