@@ -45,4 +45,4 @@ export async function api<T>(method: 'GET' | 'POST' | 'PATCH', path: string, bod
 }
 
 export const money = (n: number | undefined | null) =>
-  Number(n ?? 0).toLocaleString('en-BD', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+  Number(n ?? 0).toLocaleString('en-BD', { minimumFractionDigits: 2, maximumFractionDigits: 2 });

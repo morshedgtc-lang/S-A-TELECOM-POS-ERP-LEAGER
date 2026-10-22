@@ -50,15 +50,25 @@ A `DataService` object with `API_CONFIG.mode = 'local' | 'api'` exists, but its 
 | Monolith | separate `backend/` API and `frontend/` SPA |
 | Money balances drift | balances change only inside transactions, with a `payments` ledger |
 
+## Ported so far
+
+- Service tracker as repair job cards, with the legacy status rules (in work, out work, success, unsuccess, delivered), advance, parts, delivery billing, and status history
+- Technician (carigor) out-work with wage booking, reassignment reversal, wage ledger, and payments
+- Sale returns with serial restock, credit against customer due, and refund
+- Profit and loss with daily cash book
+- IMEI lookup across stock, sales, and repairs
+- 80 mm printing of sale invoices and repair job cards
+- Bengali UI and the legacy dashboard cards (total cash, hold amount, service track, out-work)
+- Shop settings and staff management
+
 ## Still to port (priority order)
 
-1. Returns and stock reversal
-2. Service tickets and technician work (carigor)
-3. Product variants and category custom fields
-4. Reports: profit & loss, daily cash book, supplier sales, customer due
-5. Staff salary and attendance
-6. Printing (thermal and A4 invoices, QR labels)
-7. Bengali localisation of the new UI
-8. CSV export and backup
+1. Mix (split) payment at the till and on repair delivery
+2. Product variants and category custom fields
+3. Purchase returns and supplier sales report
+4. Staff salary and attendance
+5. WhatsApp message templates (job ready, due reminder)
+6. QR / barcode label printing and A4 invoices
+7. CSV export, backup, and a one-time import from the legacy `pos_*` JSON backup
 
 Business data should be migrated from the legacy `pos_*` JSON backup with a one-time import script. That script is not written yet.

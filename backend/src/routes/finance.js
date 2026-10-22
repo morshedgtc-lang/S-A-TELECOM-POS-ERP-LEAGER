@@ -3,6 +3,7 @@ import { hasPerm, requirePerm } from '../lib/auth.js';
 import { tx } from '../lib/db.js';
 import { audit, dateClauses, httpError, requireText, round2, toMoney } from '../lib/http.js';
 import { moveMoney } from '../lib/ledger.js';
+import { profitSummary } from './reports.js';
 
 const ACCOUNT_TYPES = ['cash', 'bank', 'mobile_wallet'];
 
@@ -99,12 +100,29 @@ export function dashboardRouter(db) {
       lowStock,
     };
 
+    // Repair desk: open jobs by status (legacy "Hold amount" card) and technician payable.
+    const byStatus = db.prepare(`SELECT status, COUNT(*) AS count, COALESCE(SUM(estimated_cost), 0) AS estimated,
+                                   COALESCE(SUM(advance), 0) AS advance
+                                 FROM repair_jobs WHERE status <> 'delivered' GROUP BY status`).all();
+    const statusMap = Object.fromEntries(['in_work', 'out_work', 'success', 'failed'].map((s) => {
+      const row = byStatus.find((r) => r.status === s);
+      return [s, { count: row?.count ?? 0, estimated: round2(row?.estimated ?? 0), advance: round2(row?.advance ?? 0) }];
+    }));
+    const deliveredToday = db.prepare(`SELECT COUNT(*) AS count, COALESCE(SUM(total), 0) AS total FROM repair_jobs
+                                       WHERE status = 'delivered' AND date(delivered_at, 'localtime') = ${today}`).get();
+    const techs = db.prepare('SELECT COUNT(*) AS count, COALESCE(SUM(balance), 0) AS payable FROM technicians WHERE active = 1').get();
+    body.repairs = {
+      byStatus: statusMap,
+      holdTotal: round2(Object.values(statusMap).reduce((s, v) => s + v.estimated, 0)),
+      advanceHeld: round2(Object.values(statusMap).reduce((s, v) => s + v.advance, 0)),
+      deliveredToday: { count: deliveredToday.count, total: round2(deliveredToday.total) },
+      technicians: techs.count,
+      technicianPayable: round2(techs.payable),
+    };
+
     if (hasPerm(req.user, 'viewProfit')) {
-      const profit = db.prepare(`
-        SELECT COALESCE(SUM(si.line_total - si.unit_cost * si.qty), 0) AS gross
-        FROM sale_items si JOIN sales s ON s.id = si.sale_id
-        WHERE date(s.created_at, 'localtime') = ${today}`).get();
-      body.today.grossProfit = round2(profit.gross);
+      const day = db.prepare(`SELECT ${today} AS d`).get().d;
+      body.today.grossProfit = profitSummary(db, day, day).netProfit;
     }
     res.json(body);
   });

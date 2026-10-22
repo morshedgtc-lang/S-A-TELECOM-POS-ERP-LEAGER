@@ -17,6 +17,10 @@ export const ACTIONS = [
   'viewCost',
   'viewProfit',
   'viewAudit',
+  'manageRepairs',
+  'manageReturns',
+  'viewReports',
+  'manageSettings',
 ];
 
 const ALL_TRUE = Object.fromEntries(ACTIONS.map((a) => [a, true]));
@@ -37,8 +41,11 @@ export const ROLE_PERMISSIONS = {
     viewCost: true,
     viewProfit: true,
     viewAudit: true,
+    manageRepairs: true,
+    manageReturns: true,
+    viewReports: true,
   },
-  staff: { ...ALL_FALSE, sell: true },
+  staff: { ...ALL_FALSE, sell: true, manageRepairs: true },
 };
 
 export function hashPassword(password) {

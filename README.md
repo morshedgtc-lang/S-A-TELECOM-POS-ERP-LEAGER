@@ -53,16 +53,20 @@ cd frontend && npm run build
 | Module | Backend | Frontend |
 |--------|---------|----------|
 | Login, roles, permissions | yes | yes |
-| Dashboard | yes | yes |
+| Dashboard (cash, hold amount, service track, out-work) | yes | yes |
+| Repair job cards (service tracker), parts, delivery billing | yes | yes |
+| Technicians (carigor) out-work, wage ledger and payments | yes | yes |
+| POS till with IMEI scan, quick customer add, invoice print | yes | yes |
+| Sale invoices, reprint, returns with refund | yes | yes |
 | Products, categories, brands, stock adjust | yes | yes |
-| IMEI / serial stock | yes | yes |
-| POS sale | yes | yes |
+| IMEI / serial stock and IMEI lookup | yes | yes |
 | Purchases | yes | yes |
 | Customers & suppliers, settlements | yes | yes |
-| Accounts | create + list | balances on dashboard |
 | Expenses | yes | yes |
+| Profit & loss and daily cash book | yes | yes |
+| Shop settings and staff | yes | yes |
+| Accounts | create + list | balances on dashboard |
 | Audit log | API only | not yet |
-| Staff management | API only | not yet |
-| Returns, service tickets, reports, printing | not yet | not yet |
+| Mix payment, variants, salary, WhatsApp, labels | not yet | not yet |
 
 The porting order is in [docs/LEGACY_ANALYSIS.md](docs/LEGACY_ANALYSIS.md).

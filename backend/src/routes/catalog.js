@@ -75,6 +75,15 @@ export function productsRouter(db) {
     res.json(rows.map((r) => toProduct(r, withCost)));
   });
 
+  /** Barcode/IMEI scan at the till: finds the in-stock unit and its product. */
+  router.get('/serial/:serial', (req, res) => {
+    const unit = db.prepare("SELECT product_id, status FROM stock_units WHERE serial = ?").get(String(req.params.serial).trim());
+    if (!unit) throw httpError(404, 'This IMEI / serial is not in the system');
+    if (unit.status !== 'in_stock') throw httpError(400, 'This IMEI / serial is already sold');
+    const row = db.prepare(`${PRODUCT_SELECT} WHERE p.id = ?`).get(unit.product_id);
+    res.json({ serial: String(req.params.serial).trim(), product: toProduct(row, hasPerm(req.user, 'viewCost')) });
+  });
+
   router.get('/:id', (req, res) => {
     const row = db.prepare(`${PRODUCT_SELECT} WHERE p.id = ?`).get(req.params.id);
     if (!row) throw httpError(404, 'Product not found');

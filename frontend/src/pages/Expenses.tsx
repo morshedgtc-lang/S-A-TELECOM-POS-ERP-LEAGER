@@ -30,7 +30,7 @@ export default function Expenses() {
       setCategory('');
       setAmount('');
       setNote('');
-      setMessage({ kind: 'ok', text: 'Expense recorded' });
+      setMessage({ kind: 'ok', text: 'খরচ সেভ হয়েছে' });
       reload();
     } catch (err) {
       setMessage({ kind: 'error', text: err instanceof Error ? err.message : 'Save failed' });
@@ -39,12 +39,12 @@ export default function Expenses() {
 
   return (
     <section>
-      <h2>Expenses</h2>
+      <h2><i className="fa-solid fa-wallet" /> খরচ খাতা</h2>
       {message && <div className={message.kind === 'ok' ? 'ok' : 'error'}>{message.text}</div>}
       <div className="two-col">
         <div className="card">
           <table>
-            <thead><tr><th>Date</th><th>Category</th><th>Paid from</th><th className="num">Amount</th></tr></thead>
+            <thead><tr><th>তারিখ</th><th>খাত</th><th>একাউন্ট</th><th className="num">পরিমাণ</th></tr></thead>
             <tbody>
               {expenses.map((x) => (
                 <tr key={x.id}>
@@ -52,21 +52,21 @@ export default function Expenses() {
                   <td>{x.accountName}</td><td className="num">{money(x.amount)}</td>
                 </tr>
               ))}
-              {expenses.length === 0 && <tr><td colSpan={4} className="muted">No expenses yet.</td></tr>}
+              {expenses.length === 0 && <tr><td colSpan={4} className="muted">এখনো কোনো খরচ নেই।</td></tr>}
             </tbody>
           </table>
         </div>
         <form className="card" onSubmit={submit}>
-          <h3>New expense</h3>
-          <label>Category<input required value={category} onChange={(e) => setCategory(e.target.value)} placeholder="Rent, Electricity, Transport…" /></label>
-          <label>Amount<input required type="number" min="0.01" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} /></label>
-          <label>Paid from
+          <h3>নতুন খরচ</h3>
+          <label>খাত<input required value={category} onChange={(e) => setCategory(e.target.value)} placeholder="দোকান ভাড়া, বিদ্যুৎ, যাতায়াত…" /></label>
+          <label>পরিমাণ<input required type="number" min="0.01" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} /></label>
+          <label>যে একাউন্ট থেকে
             <select value={accountId} onChange={(e) => setAccountId(e.target.value)}>
               {accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
             </select>
           </label>
-          <label>Note<input value={note} onChange={(e) => setNote(e.target.value)} /></label>
-          <button className="primary">Save expense</button>
+          <label>নোট<input value={note} onChange={(e) => setNote(e.target.value)} /></label>
+          <button className="primary">খরচ সেভ</button>
         </form>
       </div>
     </section>

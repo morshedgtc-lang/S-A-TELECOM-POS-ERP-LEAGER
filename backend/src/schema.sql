@@ -153,6 +153,115 @@ CREATE TABLE IF NOT EXISTS audit_logs (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+CREATE TABLE IF NOT EXISTS settings (
+  key   TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+);
+
+-- Outside technicians (carigor) who take out-work jobs. balance = what the shop owes them.
+CREATE TABLE IF NOT EXISTS technicians (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  name        TEXT NOT NULL,
+  mobile      TEXT,
+  shop_name   TEXT,
+  specialties TEXT,
+  balance     REAL NOT NULL DEFAULT 0 CHECK (balance >= 0),
+  active      INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0, 1)),
+  created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS technician_ledger (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  technician_id INTEGER NOT NULL REFERENCES technicians(id),
+  kind          TEXT NOT NULL CHECK (kind IN ('opening', 'job', 'payment', 'adjustment')),
+  amount        REAL NOT NULL,                          -- signed: + adds to payable, - reduces it
+  job_id        INTEGER,
+  note          TEXT,
+  created_by    TEXT,
+  created_at    TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- Repair job card. Advance is cash received at intake; revenue is recognised at delivery.
+CREATE TABLE IF NOT EXISTS repair_jobs (
+  id              INTEGER PRIMARY KEY AUTOINCREMENT,
+  job_no          TEXT NOT NULL UNIQUE,
+  customer_id     INTEGER NOT NULL REFERENCES customers(id),
+  device          TEXT NOT NULL,
+  imei            TEXT,
+  problem         TEXT NOT NULL,
+  accessories     TEXT,
+  estimated_cost  REAL NOT NULL DEFAULT 0 CHECK (estimated_cost >= 0),
+  advance         REAL NOT NULL DEFAULT 0 CHECK (advance >= 0),
+  status          TEXT NOT NULL DEFAULT 'in_work'
+                  CHECK (status IN ('in_work', 'out_work', 'success', 'failed', 'delivered')),
+  outcome         TEXT CHECK (outcome IN ('success', 'failed')),
+  technician_id   INTEGER REFERENCES technicians(id),
+  technician_cost REAL NOT NULL DEFAULT 0 CHECK (technician_cost >= 0),
+  technician_note TEXT,
+  promised_at     TEXT,
+  service_charge  REAL NOT NULL DEFAULT 0 CHECK (service_charge >= 0),
+  parts_total     REAL NOT NULL DEFAULT 0 CHECK (parts_total >= 0),
+  total           REAL NOT NULL DEFAULT 0 CHECK (total >= 0),
+  delivery_paid   REAL NOT NULL DEFAULT 0 CHECK (delivery_paid >= 0),
+  due             REAL NOT NULL DEFAULT 0 CHECK (due >= 0),
+  refunded        REAL NOT NULL DEFAULT 0 CHECK (refunded >= 0),
+  note            TEXT,
+  created_by      TEXT NOT NULL REFERENCES users(id),
+  created_at      TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at      TEXT NOT NULL DEFAULT (datetime('now')),
+  delivered_at    TEXT
+);
+
+CREATE TABLE IF NOT EXISTS repair_job_parts (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  job_id     INTEGER NOT NULL REFERENCES repair_jobs(id) ON DELETE CASCADE,
+  product_id INTEGER NOT NULL REFERENCES products(id),
+  qty        INTEGER NOT NULL CHECK (qty > 0),
+  unit_price REAL NOT NULL CHECK (unit_price >= 0),
+  unit_cost  REAL NOT NULL CHECK (unit_cost >= 0),
+  line_total REAL NOT NULL CHECK (line_total >= 0),
+  restocked  INTEGER NOT NULL DEFAULT 0 CHECK (restocked IN (0, 1))
+);
+
+CREATE TABLE IF NOT EXISTS repair_job_events (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  job_id      INTEGER NOT NULL REFERENCES repair_jobs(id) ON DELETE CASCADE,
+  from_status TEXT,
+  to_status   TEXT NOT NULL,
+  note        TEXT,
+  created_by  TEXT,
+  created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS sale_returns (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  return_no  TEXT NOT NULL UNIQUE,
+  sale_id    INTEGER NOT NULL REFERENCES sales(id),
+  total      REAL NOT NULL CHECK (total >= 0),
+  credited   REAL NOT NULL DEFAULT 0 CHECK (credited >= 0),   -- taken off customer due
+  refunded   REAL NOT NULL DEFAULT 0 CHECK (refunded >= 0),   -- paid back from an account
+  note       TEXT,
+  created_by TEXT NOT NULL REFERENCES users(id),
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS sale_return_items (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  return_id    INTEGER NOT NULL REFERENCES sale_returns(id) ON DELETE CASCADE,
+  sale_item_id INTEGER NOT NULL REFERENCES sale_items(id),
+  product_id   INTEGER NOT NULL REFERENCES products(id),
+  qty          INTEGER NOT NULL CHECK (qty > 0),
+  unit_price   REAL NOT NULL CHECK (unit_price >= 0),     -- after the sale's discount share
+  unit_cost    REAL NOT NULL CHECK (unit_cost >= 0),
+  line_total   REAL NOT NULL CHECK (line_total >= 0),
+  serials      TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_repair_jobs_status ON repair_jobs(status);
+CREATE INDEX IF NOT EXISTS idx_repair_jobs_imei ON repair_jobs(imei);
+CREATE INDEX IF NOT EXISTS idx_repair_jobs_customer ON repair_jobs(customer_id);
+CREATE INDEX IF NOT EXISTS idx_technician_ledger_tech ON technician_ledger(technician_id);
+CREATE INDEX IF NOT EXISTS idx_sale_return_items_item ON sale_return_items(sale_item_id);
 CREATE INDEX IF NOT EXISTS idx_products_category ON products(category_id);
 CREATE INDEX IF NOT EXISTS idx_stock_units_product ON stock_units(product_id, status);
 CREATE INDEX IF NOT EXISTS idx_sales_created ON sales(created_at);

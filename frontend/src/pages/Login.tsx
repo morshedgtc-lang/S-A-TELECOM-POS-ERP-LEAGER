@@ -24,17 +24,17 @@ export default function Login() {
   return (
     <div className="login-wrap">
       <form className="card login" onSubmit={submit}>
-        <h1>SA Telecom</h1>
-        <p className="muted">POS + ERP sign in</p>
-        <label>User ID
+        <h1>SA TELECOM</h1>
+        <p className="muted">POS • সার্ভিস + বিক্রয় • ERP</p>
+        <label>ইউজার ID
           <input value={userId} onChange={(e) => setUserId(e.target.value)} autoComplete="username" required />
         </label>
-        <label>Password
+        <label>পাসওয়ার্ড
           <input type="password" value={password} onChange={(e) => setPassword(e.target.value)}
             autoComplete="current-password" required />
         </label>
         {error && <div className="error">{error}</div>}
-        <button className="primary" disabled={busy}>{busy ? 'Signing in…' : 'Sign in'}</button>
+        <button className="primary" disabled={busy}>{busy ? 'লগইন হচ্ছে…' : 'লগইন'}</button>
       </form>
     </div>
   );

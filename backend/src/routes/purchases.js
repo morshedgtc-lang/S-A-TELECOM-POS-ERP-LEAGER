@@ -58,7 +58,7 @@ export function purchasesRouter(db) {
    */
   router.post('/', requirePerm('managePurchases'), (req, res) => {
     const body = req.body ?? {};
-    const supplier = db.prepare('SELECT * FROM suppliers WHERE id = ?').get(body.supplierId);
+    const supplier = db.prepare('SELECT * FROM suppliers WHERE id = ?').get(Number(body.supplierId) || 0);
     if (!supplier) throw httpError(400, 'Supplier not found');
     const items = Array.isArray(body.items) ? body.items : [];
     if (items.length === 0) throw httpError(400, 'Add at least one item');
@@ -66,7 +66,7 @@ export function purchasesRouter(db) {
     const lines = items.map((it) => {
       const qty = toPositiveInt(it.qty, 'Quantity');
       const unitCost = toMoney(it.unitCost, 'Unit cost');
-      const product = db.prepare('SELECT * FROM products WHERE id = ? AND active = 1').get(it.productId);
+      const product = db.prepare('SELECT * FROM products WHERE id = ? AND active = 1').get(Number(it.productId) || 0);
       if (!product) throw httpError(400, `Product ${it.productId} not found`);
       let serials = [];
       if (product.serialized === 1) {

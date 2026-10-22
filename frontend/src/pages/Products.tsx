@@ -23,9 +23,9 @@ export default function Products() {
   useEffect(reload, [search]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function adjust(p: Product) {
-    const change = Number(window.prompt(`Stock change for ${p.name} (e.g. 3 or -2)`));
+    const change = Number(window.prompt(`${p.name} — স্টক কত বাড়বে/কমবে? (যেমন 3 বা -2)`));
     if (!Number.isInteger(change) || change === 0) return;
-    const reason = window.prompt('Reason (required)') ?? '';
+    const reason = window.prompt('কারণ লিখুন') ?? '';
     try {
       await api('POST', `/products/${p.id}/adjust`, { change, reason });
       reload();
@@ -37,8 +37,8 @@ export default function Products() {
   return (
     <section>
       <div className="toolbar">
-        <h2>Products & Stock</h2>
-        <input placeholder="Search name or SKU" value={search} onChange={(e) => setSearch(e.target.value)} />
+        <h2><i className="fa-solid fa-boxes-stacked" /> পণ্য তালিকা ও স্টক</h2>
+        <input placeholder="নাম বা SKU দিয়ে খুঁজুন" value={search} onChange={(e) => setSearch(e.target.value)} />
       </div>
       {error && <div className="error">{error}</div>}
 
@@ -46,27 +46,27 @@ export default function Products() {
         <table>
           <thead>
             <tr>
-              <th>Name</th><th>Category</th><th className="num">Sale</th>
-              {can('viewCost') && <th className="num">Buy</th>}
-              <th className="num">Stock</th><th>Type</th>
+              <th>নাম</th><th>ক্যাটাগরি</th><th className="num">বিক্রয়মূল্য</th>
+              {can('viewCost') && <th className="num">ক্রয়মূল্য</th>}
+              <th className="num">স্টক</th><th>ধরন</th>
               {can('manageProducts') && <th />}
             </tr>
           </thead>
           <tbody>
             {products.map((p) => (
               <tr key={p.id}>
-                <td>{p.name}{p.isLowStock && <span className="badge warn">low</span>}</td>
+                <td>{p.name}{p.isLowStock && <span className="badge warn">কম</span>}</td>
                 <td>{p.categoryName ?? '—'}</td>
                 <td className="num">{money(p.salePrice)}</td>
                 {can('viewCost') && <td className="num">{money(p.buyPrice)}</td>}
                 <td className="num">{p.stock}</td>
-                <td>{p.serialized ? 'IMEI / serial' : 'Quantity'}</td>
+                <td>{p.serialized ? 'IMEI / সিরিয়াল' : 'পরিমাণ'}</td>
                 {can('manageProducts') && (
-                  <td>{!p.serialized && <button className="ghost" onClick={() => adjust(p)}>Adjust</button>}</td>
+                  <td>{!p.serialized && <button className="ghost" onClick={() => adjust(p)}>স্টক সমন্বয়</button>}</td>
                 )}
               </tr>
             ))}
-            {products.length === 0 && <tr><td colSpan={7} className="muted">No products yet.</td></tr>}
+            {products.length === 0 && <tr><td colSpan={7} className="muted">এখনো কোনো পণ্য নেই।</td></tr>}
           </tbody>
         </table>
       </div>
@@ -75,9 +75,9 @@ export default function Products() {
         <div className="two-col">
           <ProductForm categories={categories} brands={brands} onSaved={reload} />
           <div className="card">
-            <h3>Quick add category / brand</h3>
-            <QuickAdd label="Category" onAdd={(name) => api('POST', '/catalog/categories', { name }).then(() => api<Category[]>('GET', '/catalog/categories')).then(setCategories)} />
-            <QuickAdd label="Brand" onAdd={(name) => api('POST', '/catalog/brands', { name }).then(() => api<Brand[]>('GET', '/catalog/brands')).then(setBrands)} />
+            <h3>ক্যাটাগরি / ব্র্যান্ড যোগ</h3>
+            <QuickAdd label="ক্যাটাগরি" onAdd={(name) => api('POST', '/catalog/categories', { name }).then(() => api<Category[]>('GET', '/catalog/categories')).then(setCategories)} />
+            <QuickAdd label="ব্র্যান্ড" onAdd={(name) => api('POST', '/catalog/brands', { name }).then(() => api<Brand[]>('GET', '/catalog/brands')).then(setBrands)} />
           </div>
         </div>
       )}
@@ -116,36 +116,36 @@ function ProductForm({ categories, brands, onSaved }: { categories: Category[]; 
 
   return (
     <form className="card" onSubmit={submit}>
-      <h3>New product</h3>
-      <label>Name<input required value={form.name} onChange={set('name')} /></label>
-      <label>SKU (optional)<input value={form.sku} onChange={set('sku')} /></label>
-      <label>Category
+      <h3>নতুন পণ্য</h3>
+      <label>নাম<input required value={form.name} onChange={set('name')} /></label>
+      <label>SKU / বারকোড (ঐচ্ছিক)<input value={form.sku} onChange={set('sku')} /></label>
+      <label>ক্যাটাগরি
         <select value={form.categoryId} onChange={set('categoryId')}>
           <option value="">—</option>
           {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
       </label>
-      <label>Brand
+      <label>ব্র্যান্ড
         <select value={form.brandId} onChange={set('brandId')}>
           <option value="">—</option>
           {brands.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
         </select>
       </label>
       <div className="row">
-        <label>Buy price<input type="number" min="0" value={form.buyPrice} onChange={set('buyPrice')} /></label>
-        <label>Sale price<input type="number" min="0" value={form.salePrice} onChange={set('salePrice')} /></label>
+        <label>ক্রয়মূল্য<input type="number" min="0" value={form.buyPrice} onChange={set('buyPrice')} /></label>
+        <label>বিক্রয়মূল্য<input type="number" min="0" value={form.salePrice} onChange={set('salePrice')} /></label>
       </div>
       <div className="row">
-        <label>Opening stock<input type="number" min="0" disabled={form.serialized} value={form.stock} onChange={set('stock')} /></label>
-        <label>Low stock limit<input type="number" min="0" value={form.lowStockLimit} onChange={set('lowStockLimit')} /></label>
+        <label>শুরুর স্টক<input type="number" min="0" disabled={form.serialized} value={form.stock} onChange={set('stock')} /></label>
+        <label>লো স্টক সীমা<input type="number" min="0" value={form.lowStockLimit} onChange={set('lowStockLimit')} /></label>
       </div>
       <label className="check">
         <input type="checkbox" checked={form.serialized}
           onChange={(e) => setForm({ ...form, serialized: e.target.checked })} />
-        Track each unit by IMEI / serial
+        প্রতিটি ইউনিট IMEI / সিরিয়াল দিয়ে ট্র্যাক করুন (মোবাইল ফোন)
       </label>
       {error && <div className="error">{error}</div>}
-      <button className="primary">Save product</button>
+      <button className="primary">পণ্য সেভ</button>
     </form>
   );
 }
@@ -161,8 +161,8 @@ function QuickAdd({ label, onAdd }: { label: string; onAdd: (name: string) => Pr
         .then(() => setName(''))
         .catch((err: Error) => setError(err.message));
     }}>
-      <input placeholder={`${label} name`} value={name} onChange={(e) => setName(e.target.value)} required />
-      <button>Add {label.toLowerCase()}</button>
+      <input placeholder={`${label}র নাম`} value={name} onChange={(e) => setName(e.target.value)} required />
+      <button>যোগ</button>
       {error && <div className="error">{error}</div>}
     </form>
   );

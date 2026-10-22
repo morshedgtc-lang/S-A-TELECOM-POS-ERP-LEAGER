@@ -1,7 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { api, money } from '../api';
 import { useAuth } from '../auth';
-import type { Account, Party, Product } from '../types';
+import { printSaleInvoice } from '../print';
+import { getShop } from '../shop';
+import type { Account, Party, Product, SaleDetail } from '../types';
 
 interface CartLine {
   product: Product;
@@ -16,146 +18,217 @@ export default function Pos() {
   const [customers, setCustomers] = useState<Party[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [cart, setCart] = useState<CartLine[]>([]);
-  const [pickId, setPickId] = useState('');
-  const [qty, setQty] = useState('1');
-  const [serialText, setSerialText] = useState('');
+  const [search, setSearch] = useState('');
   const [customerId, setCustomerId] = useState('');
-  const [discount, setDiscount] = useState('0');
+  const [newCustomer, setNewCustomer] = useState<{ name: string; mobile: string } | null>(null);
+  const [discount, setDiscount] = useState('');
   const [paid, setPaid] = useState('');
   const [accountId, setAccountId] = useState('');
-  const [message, setMessage] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
+  const [autoPrint, setAutoPrint] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
 
+  const loadProducts = () => api<Product[]>('GET', '/products').then(setProducts);
   useEffect(() => {
-    api<Product[]>('GET', '/products').then(setProducts);
+    loadProducts();
     api<Party[]>('GET', '/customers').then(setCustomers);
-    api<Account[]>('GET', '/accounts').then((a) => {
-      setAccounts(a);
-      if (a[0]) setAccountId(String(a[0].id));
-    });
+    api<Account[]>('GET', '/accounts').then((a) => { setAccounts(a); if (a[0]) setAccountId(String(a[0].id)); });
   }, []);
 
-  const picked = products.find((p) => String(p.id) === pickId);
-  const subtotal = useMemo(() => cart.reduce((s, l) => s + l.qty * l.unitPrice, 0), [cart]);
-  const total = Math.max(0, subtotal - (Number(discount) || 0));
-  const dueAmount = Math.max(0, total - (Number(paid) || 0));
+  const matches = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return products.slice(0, 24);
+    return products.filter((p) => p.name.toLowerCase().includes(q) || (p.sku ?? '').toLowerCase().includes(q)).slice(0, 24);
+  }, [products, search]);
 
-  function addLine() {
-    if (!picked) return;
-    const n = Number(qty);
-    const serials = picked.serialized ? serialText.split(/[\s,]+/).map((s) => s.trim()).filter(Boolean) : [];
-    if (!Number.isInteger(n) || n <= 0) return setMessage({ kind: 'error', text: 'Quantity must be a whole number' });
-    if (picked.serialized && serials.length !== n) {
-      return setMessage({ kind: 'error', text: `Enter ${n} IMEI / serial number(s)` });
-    }
-    if (!picked.serialized && picked.stock < n) {
-      return setMessage({ kind: 'error', text: `Only ${picked.stock} in stock` });
-    }
-    setCart([...cart, { product: picked, qty: n, unitPrice: picked.salePrice, serials }]);
-    setPickId('');
-    setQty('1');
-    setSerialText('');
+  const subtotal = cart.reduce((s, l) => s + l.qty * l.unitPrice, 0);
+  const total = Math.max(0, subtotal - (Number(discount) || 0));
+  const paidValue = paid === '' ? total : Number(paid) || 0;
+  const due = Math.max(0, total - paidValue);
+  const change = Math.max(0, paidValue - total);
+
+  function addProduct(p: Product, serial?: string) {
     setMessage(null);
+    if (p.serialized && !serial) {
+      const s = window.prompt(`${p.name} — IMEI / সিরিয়াল স্ক্যান করুন`);
+      if (!s?.trim()) return;
+      return void scanSerial(s.trim());
+    }
+    setCart((prev) => {
+      const i = prev.findIndex((l) => l.product.id === p.id);
+      if (serial) {
+        if (prev.some((l) => l.serials.includes(serial))) {
+          setMessage({ ok: false, text: 'এই IMEI কার্টে আছে' });
+          return prev;
+        }
+        if (i >= 0) return prev.map((l, j) => (j === i ? { ...l, qty: l.qty + 1, serials: [...l.serials, serial] } : l));
+        return [...prev, { product: p, qty: 1, unitPrice: p.salePrice, serials: [serial] }];
+      }
+      const inCart = i >= 0 ? prev[i].qty : 0;
+      if (inCart + 1 > p.stock) {
+        setMessage({ ok: false, text: `${p.name}: স্টকে মাত্র ${p.stock} টি` });
+        return prev;
+      }
+      if (i >= 0) return prev.map((l, j) => (j === i ? { ...l, qty: l.qty + 1 } : l));
+      return [...prev, { product: p, qty: 1, unitPrice: p.salePrice, serials: [] }];
+    });
+  }
+
+  async function scanSerial(serial: string) {
+    try {
+      const r = await api<{ serial: string; product: Product }>('GET', `/products/serial/${encodeURIComponent(serial)}`);
+      addProduct(r.product, r.serial);
+      return true;
+    } catch (e) {
+      setMessage({ ok: false, text: e instanceof Error ? e.message : 'Not found' });
+      return false;
+    }
+  }
+
+  /** Enter in the search box: exact SKU → add; otherwise try it as an IMEI scan. */
+  async function onSearchSubmit(e: FormEvent) {
+    e.preventDefault();
+    const q = search.trim();
+    if (!q) return;
+    const bySku = products.find((p) => p.sku && p.sku.toLowerCase() === q.toLowerCase());
+    if (bySku) addProduct(bySku);
+    else if (matches.length === 1) addProduct(matches[0]);
+    else if (/^[A-Za-z0-9-]{6,}$/.test(q) && (await scanSerial(q))) { /* added */ }
+    else return;
+    setSearch('');
+    searchRef.current?.focus();
+  }
+
+  function setLine(i: number, patch: Partial<CartLine>) {
+    setCart(cart.map((l, j) => (j === i ? { ...l, ...patch } : l)));
   }
 
   async function checkout() {
     setMessage(null);
+    setBusy(true);
     try {
-      const sale = await api<{ invoiceNo: string; total: number; due: number }>('POST', '/sales', {
-        customerId: customerId ? Number(customerId) : null,
+      let custId = customerId ? Number(customerId) : null;
+      if (newCustomer?.name.trim()) {
+        const c = await api<{ id: number }>('POST', '/customers', { name: newCustomer.name.trim(), mobile: newCustomer.mobile.trim() || null });
+        custId = c.id;
+      }
+      const sale = await api<SaleDetail>('POST', '/sales', {
+        customerId: custId,
         discount: Number(discount) || 0,
-        paid: Number(paid) || 0,
-        accountId: accountId ? Number(accountId) : null,
-        items: cart.map((l) => ({
-          productId: l.product.id,
-          qty: l.qty,
-          unitPrice: l.unitPrice,
-          serials: l.serials,
-        })),
+        paid: Math.min(paidValue, total),
+        accountId: Number(accountId) || null,
+        items: cart.map((l) => ({ productId: l.product.id, qty: l.qty, unitPrice: l.unitPrice, serials: l.serials })),
       });
-      setMessage({ kind: 'ok', text: `Saved ${sale.invoiceNo} — total ${money(sale.total)}, due ${money(sale.due)}` });
+      if (autoPrint) printSaleInvoice(sale, await getShop());
+      setMessage({ ok: true, text: `✅ ${sale.invoiceNo} সেভ হয়েছে — মোট ৳${money(sale.total)}${sale.due ? `, বাকি ৳${money(sale.due)}` : ''}` });
       setCart([]);
       setPaid('');
-      setDiscount('0');
-      api<Product[]>('GET', '/products').then(setProducts);
+      setDiscount('');
+      setNewCustomer(null);
+      setCustomerId('');
+      loadProducts();
+      if (custId) api<Party[]>('GET', '/customers').then(setCustomers);
     } catch (e) {
-      setMessage({ kind: 'error', text: e instanceof Error ? e.message : 'Sale failed' });
+      setMessage({ ok: false, text: e instanceof Error ? e.message : 'Sale failed' });
+    } finally {
+      setBusy(false);
     }
   }
 
   return (
-    <section>
-      <h2>POS Sale</h2>
-      {message && <div className={message.kind === 'ok' ? 'ok' : 'error'}>{message.text}</div>}
-
-      <div className="two-col">
-        <div className="card">
-          <h3>Add item</h3>
-          <label>Product
-            <select value={pickId} onChange={(e) => setPickId(e.target.value)}>
-              <option value="">Select…</option>
-              {products.map((p) => (
-                <option key={p.id} value={p.id} disabled={!p.serialized && p.stock <= 0}>
-                  {p.name} — {money(p.salePrice)} ({p.serialized ? 'serial' : `stock ${p.stock}`})
-                </option>
-              ))}
-            </select>
-          </label>
-          <div className="row">
-            <label>Qty<input type="number" min="1" value={qty} onChange={(e) => setQty(e.target.value)} /></label>
-          </div>
-          {picked?.serialized && (
-            <label>IMEI / serial numbers
-              <textarea rows={3} value={serialText} onChange={(e) => setSerialText(e.target.value)}
-                placeholder="Scan or type, separated by commas or new lines" />
-            </label>
-          )}
-          <button onClick={addLine} disabled={!picked}>Add to cart</button>
+    <section className="pos">
+      <div className="pos-left">
+        <form className="pos-search" onSubmit={onSearchSubmit}>
+          <i className="fa-solid fa-barcode" />
+          <input ref={searchRef} autoFocus value={search} onChange={(e) => setSearch(e.target.value)}
+            placeholder="পণ্যের নাম / SKU লিখুন বা IMEI স্ক্যান করে Enter চাপুন" />
+        </form>
+        {message && <div className={message.ok ? 'ok' : 'error'}>{message.text}</div>}
+        <div className="product-grid">
+          {matches.map((p) => {
+            const out = !p.serialized && p.stock <= 0;
+            return (
+              <button key={p.id} className="product-tile" disabled={out || (p.serialized && p.stock <= 0)} onClick={() => addProduct(p)}>
+                <div className="pt-name">{p.name}</div>
+                <div className="pt-price">৳{money(p.salePrice)}</div>
+                <div className={p.isLowStock ? 'pt-stock warn' : 'pt-stock'}>
+                  {p.serialized ? <><i className="fa-solid fa-barcode" /> IMEI · </> : null}স্টক {p.stock}
+                </div>
+              </button>
+            );
+          })}
+          {matches.length === 0 && <div className="muted">কোনো পণ্য পাওয়া যায়নি।</div>}
         </div>
+      </div>
 
-        <div className="card">
-          <h3>Cart</h3>
-          <table>
-            <tbody>
-              {cart.map((l, i) => (
-                <tr key={i}>
-                  <td>{l.product.name}{l.serials.length > 0 && <small className="muted"> {l.serials.join(', ')}</small>}</td>
-                  <td className="num">{l.qty} × {money(l.unitPrice)}</td>
-                  <td className="num">{money(l.qty * l.unitPrice)}</td>
-                  <td><button className="ghost" onClick={() => setCart(cart.filter((_, j) => j !== i))}>×</button></td>
-                </tr>
-              ))}
-              {cart.length === 0 && <tr><td className="muted">Cart is empty.</td></tr>}
-            </tbody>
-          </table>
-
-          <div className="totals">
-            <div><span>Subtotal</span><span>{money(subtotal)}</span></div>
-            <div>
-              <span>Discount</span>
-              {can('giveDiscount')
-                ? <input type="number" min="0" value={discount} onChange={(e) => setDiscount(e.target.value)} />
-                : <span>{money(Number(discount))}</span>}
+      <div className="pos-right card">
+        <h3><i className="fa-solid fa-cart-shopping" /> কার্ট ({cart.length})</h3>
+        <div className="cart-lines">
+          {cart.map((l, i) => (
+            <div key={i} className="cart-line">
+              <div className="cl-name">
+                {l.product.name}
+                {l.serials.length > 0 && <small className="muted">{l.serials.join(', ')}</small>}
+              </div>
+              <div className="cl-controls">
+                {l.serials.length === 0 ? (
+                  <input type="number" min="1" max={l.product.stock} value={l.qty} className="qty"
+                    onChange={(e) => setLine(i, { qty: Math.max(1, Math.min(l.product.stock, Number(e.target.value) || 1)) })} />
+                ) : <span className="qty-fixed">{l.qty}</span>}
+                <span>×</span>
+                {can('editPrice')
+                  ? <input type="number" min="0" value={l.unitPrice} className="price" onChange={(e) => setLine(i, { unitPrice: Number(e.target.value) || 0 })} />
+                  : <span>{money(l.unitPrice)}</span>}
+                <b className="cl-total">{money(l.qty * l.unitPrice)}</b>
+                <button className="ghost" onClick={() => setCart(cart.filter((_, j) => j !== i))} aria-label="Remove"><i className="fa-solid fa-xmark" /></button>
+              </div>
             </div>
-            <div className="grand"><span>Total</span><span>{money(total)}</span></div>
-          </div>
+          ))}
+          {cart.length === 0 && <p className="muted">পণ্যে ক্লিক করুন বা IMEI স্ক্যান করুন।</p>}
+        </div>
 
-          <label>Customer
-            <select value={customerId} onChange={(e) => setCustomerId(e.target.value)}>
-              <option value="">Walk-in (pay in full)</option>
-              {customers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+        <div className="totals">
+          <div><span>সাবটোটাল</span><span>{money(subtotal)}</span></div>
+          {can('giveDiscount') && (
+            <div><span>ডিসকাউন্ট</span><input type="number" min="0" value={discount} onChange={(e) => setDiscount(e.target.value)} placeholder="0" /></div>
+          )}
+          <div className="grand"><span>মোট</span><span>৳{money(total)}</span></div>
+        </div>
+
+        {newCustomer ? (
+          <div className="form-grid">
+            <label>নতুন কাস্টমার<input value={newCustomer.name} onChange={(e) => setNewCustomer({ ...newCustomer, name: e.target.value })} placeholder="নাম" /></label>
+            <label>মোবাইল<input value={newCustomer.mobile} onChange={(e) => setNewCustomer({ ...newCustomer, mobile: e.target.value })} /></label>
+          </div>
+        ) : (
+          <label>কাস্টমার
+            <div className="inline" style={{ margin: 0 }}>
+              <select value={customerId} onChange={(e) => setCustomerId(e.target.value)} style={{ flex: 1 }}>
+                <option value="">Walk-in (পুরো টাকা দিতে হবে)</option>
+                {customers.map((c) => <option key={c.id} value={c.id}>{c.name}{c.mobile ? ` · ${c.mobile}` : ''}{c.balance > 0 ? ` (বাকি ${money(c.balance)})` : ''}</option>)}
+              </select>
+              <button type="button" className="ghost" onClick={() => setNewCustomer({ name: '', mobile: '' })}><i className="fa-solid fa-user-plus" /></button>
+            </div>
+          </label>
+        )}
+
+        <div className="form-grid">
+          <label>পরিশোধ<input type="number" min="0" value={paid === '' ? String(total) : paid} onChange={(e) => setPaid(e.target.value)} /></label>
+          <label>একাউন্ট
+            <select value={accountId} onChange={(e) => setAccountId(e.target.value)}>
+              {accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
             </select>
           </label>
-          <div className="row">
-            <label>Paid now<input type="number" min="0" value={paid} onChange={(e) => setPaid(e.target.value)} /></label>
-            <label>Received in
-              <select value={accountId} onChange={(e) => setAccountId(e.target.value)}>
-                {accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
-              </select>
-            </label>
-          </div>
-          <p className="muted">Due after payment: {money(dueAmount)}</p>
-          <button className="primary" disabled={cart.length === 0} onClick={checkout}>Complete sale</button>
         </div>
+        <div className="pay-hints">
+          {due > 0 && <span className="warn">বাকি: ৳{money(due)}</span>}
+          {change > 0 && <span className="ok-text">ফেরত দিন: ৳{money(change)}</span>}
+        </div>
+        <label className="check"><input type="checkbox" checked={autoPrint} onChange={(e) => setAutoPrint(e.target.checked)} /> বিক্রয়ের পর ইনভয়েস প্রিন্ট</label>
+        <button className="primary btn-accent" disabled={cart.length === 0 || busy} onClick={checkout}>
+          <i className="fa-solid fa-check" /> বিক্রয় সম্পন্ন (৳{money(total)})
+        </button>
       </div>
     </section>
   );

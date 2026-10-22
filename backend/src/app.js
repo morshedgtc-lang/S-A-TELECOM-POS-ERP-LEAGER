@@ -11,6 +11,8 @@ import { customersRouter, suppliersRouter } from './routes/parties.js';
 import { salesRouter } from './routes/sales.js';
 import { purchasesRouter } from './routes/purchases.js';
 import { accountsRouter, auditRouter, dashboardRouter, expensesRouter } from './routes/finance.js';
+import { repairsRouter, techniciansRouter } from './routes/repairs.js';
+import { lookupRouter, reportsRouter, settingsRouter } from './routes/reports.js';
 
 export function createApp(db) {
   const app = express();
@@ -41,6 +43,11 @@ export function createApp(db) {
   api.use('/expenses', expensesRouter(db));
   api.use('/dashboard', dashboardRouter(db));
   api.use('/audit', auditRouter(db));
+  api.use('/repairs', repairsRouter(db));
+  api.use('/technicians', techniciansRouter(db));
+  api.use('/reports', reportsRouter(db));
+  api.use('/lookup', lookupRouter(db));
+  api.use('/settings', settingsRouter(db));
   app.use('/api', api);
   app.use('/api', (_req, res) => res.status(404).json({ error: 'Not found' }));
 
