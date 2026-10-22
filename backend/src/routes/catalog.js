@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { hasPerm, requirePerm } from '../lib/auth.js';
 import { audit, httpError, requireText, toMoney, toNumber } from '../lib/http.js';
+import { tx } from '../lib/db.js';
 
 export function catalogRouter(db) {
   const router = Router();
@@ -74,6 +75,49 @@ export function productsRouter(db) {
       .all(q, `%${q}%`, `%${q}%`, categoryId, categoryId);
     const withCost = hasPerm(req.user, 'viewCost');
     res.json(rows.map((r) => toProduct(r, withCost)));
+  });
+
+  /**
+   * Any scanned code: a product barcode (SKU, case-insensitive) or an IMEI/serial.
+   * Used by the camera scanner, the price check and the POS search box.
+   */
+  router.get('/lookup/:code', (req, res) => {
+    const code = String(req.params.code).trim();
+    if (!code) throw httpError(400, 'Empty code');
+    const withCost = hasPerm(req.user, 'viewCost');
+    const bySku = db.prepare(`${PRODUCT_SELECT} WHERE p.active = 1 AND p.sku = ? COLLATE NOCASE`).get(code);
+    if (bySku) return res.json({ code, product: toProduct(bySku, withCost), serial: null, unitStatus: null });
+    const unit = db.prepare('SELECT product_id, serial, status FROM stock_units WHERE serial = ?').get(code);
+    if (unit) {
+      const row = db.prepare(`${PRODUCT_SELECT} WHERE p.id = ?`).get(unit.product_id);
+      return res.json({ code, product: toProduct(row, withCost), serial: unit.serial, unitStatus: unit.status });
+    }
+    throw httpError(404, `No product or IMEI found for ${code}`);
+  });
+
+  /** Gives every active product without a SKU a unique barcode (SA000123). */
+  router.post('/barcodes/assign', requirePerm('manageProducts'), (req, res) => {
+    const rows = db.prepare("SELECT id FROM products WHERE active = 1 AND (sku IS NULL OR TRIM(sku) = '')").all();
+    const taken = db.prepare('SELECT 1 FROM products WHERE sku = ? COLLATE NOCASE');
+    const set = db.prepare('UPDATE products SET sku = ? WHERE id = ?');
+    let assigned = 0;
+    tx(db, () => {
+      for (const r of rows) {
+        let code = `SA${String(r.id).padStart(6, '0')}`;
+        for (let n = 1; taken.get(code); n++) code = `SA${String(r.id).padStart(6, '0')}-${n}`;
+        set.run(code, r.id);
+        assigned++;
+      }
+    });
+    if (assigned) audit(db, req.user, 'barcodes_assign', 'products', `count=${assigned}`);
+    res.json({ assigned });
+  });
+
+  /** In-stock IMEIs of a serialized product, for IMEI labels. */
+  router.get('/:id/units', (req, res) => {
+    const product = db.prepare('SELECT id FROM products WHERE id = ?').get(req.params.id);
+    if (!product) throw httpError(404, 'Product not found');
+    res.json(db.prepare("SELECT serial FROM stock_units WHERE product_id = ? AND status = 'in_stock' ORDER BY id").all(product.id).map((u) => u.serial));
   });
 
   /** Barcode/IMEI scan at the till: finds the in-stock unit and its product. */

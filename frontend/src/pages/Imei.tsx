@@ -3,17 +3,24 @@ import { api } from '../api';
 import { fmtDate, STATUS } from '../labels';
 import type { ImeiResult } from '../types';
 import { t } from '../i18n';
+import Scanner from '../components/Scanner';
 
 export default function Imei() {
   const [q, setQ] = useState('');
   const [data, setData] = useState<ImeiResult | null>(null);
   const [error, setError] = useState('');
 
+  const [scanning, setScanning] = useState(false);
+
   async function search(e: FormEvent) {
     e.preventDefault();
+    await run(q);
+  }
+
+  async function run(value: string) {
     setError('');
     try {
-      setData(await api<ImeiResult>('GET', `/lookup/imei?q=${encodeURIComponent(q.trim())}`));
+      setData(await api<ImeiResult>('GET', `/lookup/imei?q=${encodeURIComponent(value.trim())}`));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Search failed');
     }
@@ -24,8 +31,10 @@ export default function Imei() {
       <h2><i className="fa-solid fa-mobile-screen-button" /> {t('IMEI লুকআপ')}</h2>
       <form className="inline card" onSubmit={search}>
         <input autoFocus required minLength={3} value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('IMEI / সিরিয়াল স্ক্যান বা টাইপ করুন')} inputMode="numeric" style={{ flex: 1 }} />
+        <button type="button" className="ghost" onClick={() => setScanning(true)} aria-label={t('ক্যামেরা দিয়ে স্ক্যান')}><i className="fa-solid fa-camera" /></button>
         <button><i className="fa-solid fa-magnifying-glass" /> {t('খুঁজুন')}</button>
       </form>
+      {scanning && <Scanner onResult={(code) => { setQ(code); run(code); }} onClose={() => setScanning(false)} />}
       {error && <div className="error">{error}</div>}
       {data && (
         <>

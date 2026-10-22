@@ -24,9 +24,10 @@ import Settings from './pages/Settings';
 import Website from './pages/Website';
 import Dues from './pages/Dues';
 import Download from './pages/Download';
+import Barcodes from './pages/Barcodes';
 
 type PageId =
-  | 'dashboard' | 'repairs' | 'technicians' | 'pos' | 'sales' | 'purchases' | 'products' | 'imei'
+  | 'dashboard' | 'repairs' | 'technicians' | 'pos' | 'sales' | 'purchases' | 'products' | 'barcodes' | 'imei'
   | 'parties' | 'dues' | 'expenses' | 'reports' | 'website' | 'settings';
 
 interface NavItem {
@@ -47,6 +48,7 @@ const NAV: NavItem[] = [
   { id: 'sales', label: 'বিক্রয় ইনভয়েস ও রিটার্ন', icon: 'fa-file-invoice', section: 'বিক্রি ও সেবা' },
   { id: 'purchases', label: 'নতুন ক্রয়', icon: 'fa-cart-shopping', section: 'ক্রয় ও স্টক-ইন', needs: ['managePurchases'] },
   { id: 'products', label: 'পণ্য তালিকা ও স্টক', icon: 'fa-boxes-stacked', section: 'পণ্য ব্যবস্থাপনা' },
+  { id: 'barcodes', label: 'বারকোড ও লেবেল', icon: 'fa-barcode', section: 'পণ্য ব্যবস্থাপনা' },
   { id: 'imei', label: 'IMEI লুকআপ', icon: 'fa-mobile-screen-button', section: 'পণ্য ব্যবস্থাপনা' },
   { id: 'parties', label: 'কাস্টমার ও সাপ্লায়ার খাতা', icon: 'fa-users', section: 'পার্টি ও খাতা' },
   { id: 'dues', label: 'বকেয়া আদায় তালিকা', icon: 'fa-hand-holding-dollar', section: 'পার্টি ও খাতা' },
@@ -154,6 +156,7 @@ function Shell({ user, page }: { user: User; page: string }) {
           {current.id === 'pos' && <Pos />}
           {current.id === 'sales' && <Sales />}
           {current.id === 'products' && <Products />}
+          {current.id === 'barcodes' && <Barcodes />}
           {current.id === 'imei' && <Imei />}
           {current.id === 'purchases' && <Purchases />}
           {current.id === 'parties' && <Parties />}

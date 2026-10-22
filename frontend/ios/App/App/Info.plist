@@ -6,6 +6,8 @@
 	<string>$(CAPACITOR_DEBUG)</string>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
+	<key>NSCameraUsageDescription</key>
+	<string>The camera scans product barcodes and IMEI codes.</string>
 	<key>CFBundleDisplayName</key>
         <string>SA Telecom POS</string>
 	<key>CFBundleExecutable</key>

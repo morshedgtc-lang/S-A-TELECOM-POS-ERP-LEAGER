@@ -13,6 +13,7 @@ import './site.css';
 import './mobile.css';
 import './dealers.css';
 import './download.css';
+import './barcode.css';
 
 initNative();
 

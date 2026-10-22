@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { api, money } from '../api';
 import { useAuth } from '../auth';
+import Scanner from '../components/Scanner';
 import { printSaleInvoice } from '../print';
 import { getShop } from '../shop';
 import type { Account, Party, Product, SaleDetail } from '../types';
@@ -20,6 +21,7 @@ export default function Pos() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [cart, setCart] = useState<CartLine[]>([]);
   const [search, setSearch] = useState('');
+  const [scanning, setScanning] = useState(false);
   const [customerId, setCustomerId] = useState('');
   const selectedCustomer = customers.find((c) => String(c.id) === customerId);
   const isDealer = selectedCustomer?.customerType === 'wholesaler';
@@ -63,7 +65,7 @@ export default function Pos() {
     if (p.serialized && !serial) {
       const s = window.prompt(t('{name} — IMEI / সিরিয়াল স্ক্যান করুন', { name: p.name }));
       if (!s?.trim()) return;
-      return void scanSerial(s.trim());
+      return void lookupCode(s.trim());
     }
     setCart((prev) => {
       const i = prev.findIndex((l) => l.product.id === p.id);
@@ -85,10 +87,15 @@ export default function Pos() {
     });
   }
 
-  async function scanSerial(serial: string) {
+  /** Any scanned code: product barcode (SKU) or the IMEI of an in-stock phone. */
+  async function lookupCode(code: string) {
     try {
-      const r = await api<{ serial: string; product: Product }>('GET', `/products/serial/${encodeURIComponent(serial)}`);
-      addProduct(r.product, r.serial);
+      const r = await api<{ product: Product; serial: string | null; unitStatus: string | null }>('GET', `/products/lookup/${encodeURIComponent(code)}`);
+      if (r.serial && r.unitStatus !== 'in_stock') {
+        setMessage({ ok: false, text: t('এই IMEI আগেই বিক্রি হয়েছে') });
+        return false;
+      }
+      addProduct(r.product, r.serial ?? undefined);
       return true;
     } catch (e) {
       setMessage({ ok: false, text: e instanceof Error ? e.message : 'Not found' });
@@ -104,7 +111,7 @@ export default function Pos() {
     const bySku = products.find((p) => p.sku && p.sku.toLowerCase() === q.toLowerCase());
     if (bySku) addProduct(bySku);
     else if (matches.length === 1) addProduct(matches[0]);
-    else if (/^[A-Za-z0-9-]{6,}$/.test(q) && (await scanSerial(q))) { /* added */ }
+    else if (await lookupCode(q)) { /* added by barcode or IMEI */ }
     else return;
     setSearch('');
     searchRef.current?.focus();
@@ -162,7 +169,11 @@ export default function Pos() {
           <i className="fa-solid fa-barcode" />
           <input ref={searchRef} autoFocus value={search} onChange={(e) => setSearch(e.target.value)}
             placeholder={t('পণ্যের নাম / SKU লিখুন বা IMEI স্ক্যান করে Enter চাপুন')} />
+          <button type="button" className="scan-btn" onClick={() => setScanning(true)} aria-label={t('ক্যামেরা দিয়ে স্ক্যান')}>
+            <i className="fa-solid fa-camera" />
+          </button>
         </form>
+        {scanning && <Scanner continuous title={t('স্ক্যান করে কার্টে যোগ')} onResult={(code) => { lookupCode(code); }} onClose={() => setScanning(false)} />}
         {message && <div className={message.ok ? 'ok' : 'error'}>{message.text}</div>}
         <div className="product-grid">
           {matches.map((p) => {

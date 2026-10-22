@@ -1,9 +1,9 @@
 {
   "android": {
-    "version": "1.1.1",
-    "versionCode": 3,
+    "version": "1.2.0",
+    "versionCode": 4,
     "file": "/downloads/sa-telecom-pos.apk",
-    "size": 5467284,
+    "size": 5657528,
     "minAndroid": "7.0",
     "updated": "2026-10-23"
   }

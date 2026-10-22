@@ -1,0 +1,46 @@
+/* Camera scanner */
+.scanner { position: relative; background: #000; border-radius: 14px; overflow: hidden; aspect-ratio: 4 / 3; display: grid; place-items: center; }
+.scanner video { width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 0.2s; }
+.scanner video.on { opacity: 1; }
+.scan-frame { position: absolute; inset: 22% 12%; border: 3px solid rgba(255, 255, 255, 0.9); border-radius: 12px; box-shadow: 0 0 0 999px rgba(0, 0, 0, 0.35); }
+.scan-frame span { position: absolute; left: 6%; right: 6%; top: 50%; height: 2px; background: var(--rose); box-shadow: 0 0 10px var(--rose); animation: scanline 1.6s ease-in-out infinite; }
+@keyframes scanline { 0%, 100% { transform: translateY(-34px); } 50% { transform: translateY(34px); } }
+.scan-msg { position: absolute; color: #fff; text-align: center; padding: 16px; font-size: 14px; }
+.error-text { color: #fecaca; }
+.scanner-manual { margin: 10px 0 0; }
+.scanner-manual input { flex: 1; }
+.small-note { font-size: 12px; }
+.center { text-align: center; }
+.pos-search .scan-btn, .scan-btn {
+  background: var(--rose); border: 0; color: #fff; width: 42px; height: 42px; border-radius: 10px; display: grid; place-items: center; font-size: 18px; flex-shrink: 0;
+}
+
+/* Price check */
+.price-check { max-width: 720px; margin: 0 auto; }
+.price-card {
+  background: var(--card); border: 1px solid var(--line); border-top: 6px solid var(--green); border-radius: 18px; padding: 22px;
+  text-align: center; display: grid; gap: 8px; box-shadow: 0 14px 34px rgba(0, 0, 0, 0.1);
+}
+.pc-name { font-size: 22px; font-weight: 800; }
+.pc-price { font-size: clamp(40px, 9vw, 64px); font-weight: 900; color: var(--rose); line-height: 1.05; }
+.pc-meta { display: flex; flex-wrap: wrap; justify-content: center; gap: 16px; font-size: 15px; }
+
+/* Label maker */
+.label-maker { display: grid; grid-template-columns: 1.3fr 1fr; gap: 16px; align-items: start; }
+.hint-bar { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; background: color-mix(in srgb, var(--amber) 14%, transparent); border-radius: 10px; padding: 8px 12px; margin-bottom: 10px; }
+.pick-list { display: grid; gap: 6px; max-height: 60vh; overflow-y: auto; }
+.pick { display: grid; grid-template-columns: 1fr auto auto; gap: 10px; align-items: center; border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; }
+.pick.on { border-color: var(--rose); background: color-mix(in srgb, var(--rose) 6%, transparent); }
+.pick label { margin: 0; }
+.pick .copies { width: 80px; text-align: center; }
+.label-settings { position: sticky; top: 74px; }
+.toggle-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; }
+.label-preview-wrap { background: repeating-conic-gradient(var(--soft) 0% 25%, transparent 0% 50%) 50% / 16px 16px; border-radius: 12px; padding: 18px; display: grid; place-items: center; margin: 8px 0 12px; }
+.lbl.preview { box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25); border-radius: 2px; transform: scale(1.6); transform-origin: center; margin: 22px; }
+
+@media (max-width: 900px) {
+  .label-maker { grid-template-columns: 1fr; }
+  .label-settings { position: static; }
+  .pick { grid-template-columns: 1fr auto; }
+  .lbl.preview { transform: scale(1.3); }
+}

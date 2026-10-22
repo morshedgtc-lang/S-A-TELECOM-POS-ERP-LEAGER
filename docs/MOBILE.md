@@ -17,6 +17,8 @@ The apps talk to the shop's server — the Railway domain, for example `https://
 | Public home page | Shown at `/` | Skipped — the app opens at login, or straight to the dashboard |
 | Print invoice / job card | 80 mm print window | Share sheet (WhatsApp, Messenger, SMS, or a Bluetooth printer app) |
 | Navigation on a phone | Bottom tab bar + side menu | Same, plus the Android back button |
+| Barcode / IMEI scanning | Camera (https or localhost) or a USB / Bluetooth scanner | Camera (asks for permission once) or a Bluetooth scanner |
+| Label printing | Print window (thermal or A4) | Not available — print labels from a computer |
 | Status bar, splash, icon | — | Dark status bar, rose splash and launcher icon |
 
 ## Build the Android APK

@@ -40,6 +40,7 @@ export interface Product {
   categoryId: number | null;
   categoryName: string | null;
   salePrice: number;
+  brandName?: string | null;
   dealerPrice: number | null;
   buyPrice?: number;
   stock: number;

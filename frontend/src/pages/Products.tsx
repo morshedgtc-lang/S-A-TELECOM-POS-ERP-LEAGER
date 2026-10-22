@@ -3,6 +3,7 @@ import { api, money } from '../api';
 import { useAuth } from '../auth';
 import type { Brand, Category, Product } from '../types';
 import { t } from '../i18n';
+import Scanner from '../components/Scanner';
 
 export default function Products() {
   const { can } = useAuth();
@@ -10,6 +11,7 @@ export default function Products() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [brands, setBrands] = useState<Brand[]>([]);
   const [search, setSearch] = useState('');
+  const [scanning, setScanning] = useState(false);
   const [error, setError] = useState('');
 
   const reload = () => {
@@ -39,7 +41,11 @@ export default function Products() {
     <section>
       <div className="toolbar">
         <h2><i className="fa-solid fa-boxes-stacked" /> {t('পণ্য তালিকা ও স্টক')}</h2>
-        <input placeholder={t('নাম বা SKU দিয়ে খুঁজুন')} value={search} onChange={(e) => setSearch(e.target.value)} />
+        <div className="inline" style={{ margin: 0 }}>
+          <input placeholder={t('নাম বা SKU দিয়ে খুঁজুন')} value={search} onChange={(e) => setSearch(e.target.value)} />
+          <button className="ghost" onClick={() => setScanning(true)} aria-label={t('ক্যামেরা দিয়ে স্ক্যান')}><i className="fa-solid fa-camera" /></button>
+        </div>
+        {scanning && <Scanner onResult={setSearch} onClose={() => setScanning(false)} />}
       </div>
       {error && <div className="error">{error}</div>}
 

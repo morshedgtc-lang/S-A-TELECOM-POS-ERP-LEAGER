@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type CSSProperties, type FormEvent } 
 import { api, money } from '../api';
 import { useAuth } from '../auth';
 import Modal from '../components/Modal';
+import Scanner from '../components/Scanner';
 import { fmtDate, NEXT_STATUS, STATUS } from '../labels';
 import { printJobCard } from '../print';
 import { getShop } from '../shop';
@@ -124,6 +125,7 @@ function NewJob({ onClose, onCreated }: { onClose: () => void; onCreated: (id: n
   });
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [scanImei, setScanImei] = useState(false);
   const set = (k: keyof typeof f) => (e: { target: { value: string } }) => setF({ ...f, [k]: e.target.value });
   const accountId = f.accountId || String(accounts[0]?.id ?? '');
 
@@ -160,7 +162,12 @@ function NewJob({ onClose, onCreated }: { onClose: () => void; onCreated: (id: n
           <label>{t('কাস্টমারের নাম *')}<input required value={f.name} onChange={set('name')} /></label>
           <label>{t('মোবাইল')}<input value={f.mobile} onChange={set('mobile')} inputMode="tel" placeholder="01XXXXXXXXX" /></label>
           <label>{t('ডিভাইস (ব্র্যান্ড/মডেল) *')}<input required value={f.device} onChange={set('device')} placeholder="Samsung A52" /></label>
-          <label>IMEI<input value={f.imei} onChange={set('imei')} inputMode="numeric" /></label>
+          <label>IMEI
+            <div className="pw-field">
+              <input value={f.imei} onChange={set('imei')} inputMode="numeric" />
+              <button type="button" className="ghost" onClick={() => setScanImei(true)} aria-label={t('ক্যামেরা দিয়ে স্ক্যান')}><i className="fa-solid fa-camera" /></button>
+            </div>
+          </label>
           <label className="span-2">{t('সমস্যা *')}<textarea required rows={2} value={f.problem} onChange={set('problem')} placeholder={t('Display ভাঙা, চার্জ হয় না…')} /></label>
           <label className="span-2">{t('সাথে যা রাখা হলো')}<input value={f.accessories} onChange={set('accessories')} placeholder={t('ব্যাক কভার, সিম, মেমোরি…')} /></label>
           <label>{t('আনুমানিক খরচ')}<input type="number" min="0" value={f.estimatedCost} onChange={set('estimatedCost')} /></label>
@@ -177,6 +184,7 @@ function NewJob({ onClose, onCreated }: { onClose: () => void; onCreated: (id: n
         {error && <div className="error">{error}</div>}
         <button className="primary" disabled={busy}>{busy ? t('সেভ হচ্ছে…') : t('জব সেভ ও প্রিন্ট')}</button>
       </form>
+      {scanImei && <Scanner title="IMEI" onResult={(code) => setF((cur) => ({ ...cur, imei: code }))} onClose={() => setScanImei(false)} />}
     </Modal>
   );
 }
