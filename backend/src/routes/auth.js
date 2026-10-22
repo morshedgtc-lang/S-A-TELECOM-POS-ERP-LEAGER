@@ -1,8 +1,7 @@
 import { Router } from 'express';
-import { ACTIONS, hashPassword, requirePerm, ROLE_PERMISSIONS, signToken, toUser, verifyPassword } from '../lib/auth.js';
+import { ACTIONS, hashPassword, requirePerm, ROLE_PERMISSIONS, ROLE_RANK, signToken, toUser, verifyPassword } from '../lib/auth.js';
 import { audit, httpError, requireText, toMoney } from '../lib/http.js';
 
-const ROLES = ['manager', 'staff'];
 
 export function authRouter(db) {
   const router = Router();
@@ -34,7 +33,7 @@ export function usersRouter(db) {
     const name = requireText(req.body?.name, 'Name');
     const password = requireText(req.body?.password, 'Password');
     const role = req.body?.role;
-    if (!ROLES.includes(role)) throw httpError(400, 'Role must be manager or staff');
+    assertCanAssign(req.user, role);
     if (password.length < 6) throw httpError(400, 'Password must be at least 6 characters');
     if (db.prepare('SELECT 1 FROM users WHERE id = ?').get(id)) throw httpError(409, 'User ID already exists');
 
@@ -50,24 +49,32 @@ export function usersRouter(db) {
   router.patch('/:id', requirePerm('manageStaff'), (req, res) => {
     const row = db.prepare('SELECT * FROM users WHERE id = ?').get(req.params.id);
     if (!row) throw httpError(404, 'User not found');
-    const isOwner = row.role === 'owner';
-    if (isOwner && req.body?.active === false) throw httpError(400, 'Owner account cannot be deactivated');
-    if (isOwner && req.body?.role && req.body.role !== 'owner') throw httpError(400, 'Owner role cannot be changed');
-    if (!isOwner && req.body?.role && !ROLES.includes(req.body.role)) throw httpError(400, 'Invalid role');
+    const b = req.body ?? {};
+    const self = row.id === req.user.id;
+    if (self && (b.role !== undefined || b.active !== undefined || b.permissions !== undefined || b.password !== undefined)) {
+      throw httpError(400, 'Use "change password" for your own account; others manage your role and access');
+    }
+    if (!self) assertCanManage(req.user, row);
 
-    const role = isOwner ? 'owner' : (req.body?.role ?? row.role);
-    const permissions = isOwner ? '{}' : JSON.stringify(sanitizePermissions(req.body?.permissions, row, role));
-    const password = req.body?.password ? String(req.body.password) : null;
+    const role = b.role ?? row.role;
+    if (role !== row.role) assertCanAssign(req.user, role);
+    const active = b.active === undefined ? row.active : (b.active ? 1 : 0);
+    if (row.role === 'owner' && (role !== 'owner' || active === 0)) {
+      const others = db.prepare("SELECT COUNT(*) AS n FROM users WHERE role = 'owner' AND active = 1 AND id <> ?").get(row.id).n;
+      if (others === 0) throw httpError(400, 'At least one active Super Admin must remain');
+    }
+    const permissions = ['owner', 'admin'].includes(role) ? '{}' : JSON.stringify(sanitizePermissions(b.permissions, row, role));
+    const password = b.password ? String(b.password) : null;
     if (password && password.length < 6) throw httpError(400, 'Password must be at least 6 characters');
 
     db.prepare(`UPDATE users SET name = ?, mobile = ?, role = ?, active = ?, basic_salary = ?,
                   permissions = ?, password_hash = ? WHERE id = ?`)
       .run(
-        req.body?.name ? requireText(req.body.name, 'Name') : row.name,
-        req.body?.mobile ?? row.mobile,
+        b.name ? requireText(b.name, 'Name') : row.name,
+        b.mobile ?? row.mobile,
         role,
-        req.body?.active === undefined ? row.active : (req.body.active ? 1 : 0),
-        req.body?.basicSalary === undefined ? row.basic_salary : toMoney(req.body.basicSalary, 'Basic salary'),
+        active,
+        b.basicSalary === undefined ? row.basic_salary : toMoney(b.basicSalary, 'Basic salary'),
         permissions,
         password ? hashPassword(password) : row.password_hash,
         row.id,
@@ -86,4 +93,33 @@ function sanitizePermissions(input, row, role) {
   const out = {};
   for (const action of ACTIONS) out[action] = Boolean(input[action]);
   return out;
+}
+
+/** Super Admin may assign any role; everyone else only roles ranked below their own. */
+function assertCanAssign(actor, role) {
+  if (!(role in ROLE_RANK)) throw httpError(400, 'Role must be owner, admin, manager or staff');
+  if (actor.role !== 'owner' && ROLE_RANK[role] >= ROLE_RANK[actor.role]) {
+    throw httpError(403, 'You can only create or assign roles below your own');
+  }
+}
+
+function assertCanManage(actor, target) {
+  if (actor.role !== 'owner' && ROLE_RANK[target.role] >= ROLE_RANK[actor.role]) {
+    throw httpError(403, 'You can only manage users below your own role');
+  }
+}
+
+/** Any signed-in user changes their own password after confirming the current one. */
+export function changeOwnPassword(db) {
+  return (req, res) => {
+    const row = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
+    if (!verifyPassword(String(req.body?.currentPassword ?? ''), row.password_hash)) {
+      throw httpError(400, 'Current password is wrong');
+    }
+    const next = String(req.body?.newPassword ?? '');
+    if (next.length < 6) throw httpError(400, 'Password must be at least 6 characters');
+    db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(hashPassword(next), row.id);
+    audit(db, req.user, 'password_change', row.id);
+    res.json({ ok: true });
+  };
 }

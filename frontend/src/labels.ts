@@ -46,3 +46,13 @@ export function todayKey(): string {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
+
+/** Role display names (Bangla keys for t()). owner is the Super Admin. */
+export const ROLE_LABEL = {
+  owner: 'সুপার অ্যাডমিন',
+  admin: 'অ্যাডমিন',
+  manager: 'ম্যানেজার',
+  staff: 'স্টাফ',
+} as const;
+
+export const ROLE_RANK = { owner: 4, admin: 3, manager: 2, staff: 1 } as const;

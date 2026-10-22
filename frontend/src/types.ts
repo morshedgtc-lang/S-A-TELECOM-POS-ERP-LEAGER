@@ -19,7 +19,7 @@ export type Action =
 export interface User {
   id: string;
   name: string;
-  role: 'owner' | 'manager' | 'staff';
+  role: 'owner' | 'admin' | 'manager' | 'staff';
   permissions: Record<Action, boolean>;
 }
 
@@ -243,8 +243,48 @@ export interface StaffUser {
   id: string;
   name: string;
   mobile: string | null;
-  role: 'owner' | 'manager' | 'staff';
+  role: 'owner' | 'admin' | 'manager' | 'staff';
   active: boolean;
   basicSalary: number;
   lastLoginAt: string | null;
+}
+
+export interface Bi {
+  en: string;
+  bn: string;
+}
+
+export interface SiteContent {
+  heroTitle: Bi;
+  heroSubtitle: Bi;
+  heroImage: string;
+  about: Bi;
+  services: { icon: string; title: Bi; desc: Bi }[];
+  highlights: { icon: string; title: Bi }[];
+  whatsapp: string;
+  email: string;
+  hours: Bi;
+  mapUrl: string;
+  facebook: string;
+  showTracking: boolean;
+}
+
+export interface PublicSite {
+  shop: { shopName: string; shopPhone: string; shopAddress: string };
+  site: SiteContent;
+}
+
+export interface TrackResult {
+  jobNo: string;
+  device: string;
+  status: RepairStatus;
+  outcome: 'success' | 'failed' | null;
+  createdAt: string;
+  promisedAt: string | null;
+  deliveredAt: string | null;
+  estimatedCost: number;
+  advance: number;
+  total: number | null;
+  due: number | null;
+  events: { status: RepairStatus; at: string }[];
 }

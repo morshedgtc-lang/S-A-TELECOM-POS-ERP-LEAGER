@@ -1,7 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { api, money } from './api';
 import { useAuth } from './auth';
-import type { Account, Action } from './types';
+import Modal from './components/Modal';
+import { PrefToggles, t } from './i18n';
+import { navigate, usePath } from './router';
+import { ROLE_LABEL } from './labels';
+import type { Account, Action, User } from './types';
+import Home from './pages/Home';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Pos from './pages/Pos';
@@ -15,10 +20,11 @@ import Sales from './pages/Sales';
 import Reports from './pages/Reports';
 import Imei from './pages/Imei';
 import Settings from './pages/Settings';
+import Website from './pages/Website';
 
 type PageId =
   | 'dashboard' | 'repairs' | 'technicians' | 'pos' | 'sales' | 'purchases' | 'products' | 'imei'
-  | 'parties' | 'expenses' | 'reports' | 'settings';
+  | 'parties' | 'expenses' | 'reports' | 'website' | 'settings';
 
 interface NavItem {
   id: PageId;
@@ -29,12 +35,12 @@ interface NavItem {
   needs?: Action[];
 }
 
-// Labels and sections follow the legacy app's sidebar.
+// Bangla labels are translation keys (see i18n.en.ts); t() is applied at render time.
 const NAV: NavItem[] = [
   { id: 'dashboard', label: 'ড্যাশবোর্ড', icon: 'fa-border-all', section: 'ওভারভিউ' },
   { id: 'repairs', label: 'সার্ভিস ট্র্যাকার', icon: 'fa-list-check', section: 'ওভারভিউ' },
   { id: 'technicians', label: 'কারিগর আউট-ওয়ার্ক', icon: 'fa-screwdriver-wrench', section: 'ওভারভিউ' },
-  { id: 'pos', label: 'POS ক্যাশিয়ার', icon: 'fa-money-bill-wave', section: 'বিক্রি ও সেবা', needs: ['sell'] },
+  { id: 'pos', label: 'POS ক্যাশিয়ার', icon: 'fa-cash-register', section: 'বিক্রি ও সেবা', needs: ['sell'] },
   { id: 'sales', label: 'বিক্রয় ইনভয়েস ও রিটার্ন', icon: 'fa-file-invoice', section: 'বিক্রি ও সেবা' },
   { id: 'purchases', label: 'নতুন ক্রয়', icon: 'fa-cart-shopping', section: 'ক্রয় ও স্টক-ইন', needs: ['managePurchases'] },
   { id: 'products', label: 'পণ্য তালিকা ও স্টক', icon: 'fa-boxes-stacked', section: 'পণ্য ব্যবস্থাপনা' },
@@ -42,30 +48,44 @@ const NAV: NavItem[] = [
   { id: 'parties', label: 'কাস্টমার ও সাপ্লায়ার খাতা', icon: 'fa-users', section: 'পার্টি ও খাতা' },
   { id: 'expenses', label: 'খরচ খাতা', icon: 'fa-wallet', section: 'টাকা ও হিসাব', needs: ['manageExpenses'] },
   { id: 'reports', label: 'লাভ-ক্ষতি ও রিপোর্ট', icon: 'fa-chart-pie', section: 'টাকা ও হিসাব', needs: ['viewReports'] },
+  { id: 'website', label: 'ওয়েবসাইট ও ব্যানার', icon: 'fa-globe', section: 'ওনার ও প্রশাসন', needs: ['manageSettings'] },
   { id: 'settings', label: 'শপ সেটিংস / স্টাফ', icon: 'fa-gear', section: 'ওনার ও প্রশাসন', needs: ['manageSettings', 'manageStaff'] },
 ];
 
-const ROLE_LABEL = { owner: 'Owner', manager: 'Manager', staff: 'Staff' };
-
 export default function App() {
-  const { user, ready, logout, can } = useAuth();
-  const [page, setPage] = useState<PageId>('dashboard');
+  const { user, ready } = useAuth();
+  const path = usePath();
+
+  const inApp = path === '/app' || path.startsWith('/app/');
+  useEffect(() => {
+    if (!ready) return;
+    if (inApp && !user) navigate('/login', true);
+    if (path === '/login' && user) navigate('/app', true);
+  }, [ready, user, inApp, path]);
+
+  if (path === '/login') return user ? null : <Login />;
+  if (!inApp) return <Home />;
+  if (!ready || !user) return <div className="splash"><i className="fa-solid fa-spinner fa-spin" /></div>;
+  return <Shell user={user} page={path.split('/')[2] ?? ''} />;
+}
+
+function Shell({ user, page }: { user: User; page: string }) {
+  const { logout, can } = useAuth();
   const [cash, setCash] = useState<number | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
-
-  useEffect(() => {
-    if (!user) return;
-    api<Account[]>('GET', '/accounts')
-      .then((rows) => setCash(rows.reduce((s, a) => s + a.balance, 0)))
-      .catch(() => setCash(null));
-  }, [user, page]);
-
-  if (!ready) return <div className="splash">Loading…</div>;
-  if (!user) return <Login />;
+  const [userMenu, setUserMenu] = useState(false);
+  const [pwOpen, setPwOpen] = useState(false);
 
   const visible = NAV.filter((n) => !n.needs || n.needs.some(can));
   const current = visible.find((n) => n.id === page) ?? visible[0];
   const sections = [...new Set(visible.map((n) => n.section))];
+  const go = (id: PageId) => { navigate(id === 'dashboard' ? '/app' : `/app/${id}`); setMenuOpen(false); };
+
+  useEffect(() => {
+    api<Account[]>('GET', '/accounts')
+      .then((rows) => setCash(rows.reduce((s, a) => s + a.balance, 0)))
+      .catch(() => setCash(null));
+  }, [page]);
 
   return (
     <div className="app">
@@ -73,17 +93,26 @@ export default function App() {
         <button className="icon-btn menu-toggle" aria-label="Menu" onClick={() => setMenuOpen(!menuOpen)}>
           <i className="fa-solid fa-bars" />
         </button>
-        <i className="fa-solid fa-rotate-right brand-icon" />
-        <div className="brand">
-          SA Telecom POS v1.0
-          <span>{current.label}</span>
-        </div>
+        <button className="brand" onClick={() => go('dashboard')}>
+          <span className="brand-mark"><i className="fa-solid fa-mobile-screen-button" /></span>
+          <span>SA Telecom<small>{t(current.label)}</small></span>
+        </button>
         <div className="top-pills">
-          <span className="pill"><i className="fa-solid fa-wallet" /> ৳{money(cash)}</span>
-          <span className="pill"><i className="fa-solid fa-circle-user" /> {ROLE_LABEL[user.role]}</span>
-          <button className="pill pill-btn" onClick={logout} title="Log out">
-            <i className="fa-solid fa-right-from-bracket" />
-          </button>
+          <span className="pill cash-pill"><i className="fa-solid fa-wallet" /> ৳{money(cash)}</span>
+          <PrefToggles compact />
+          <div className="user-menu">
+            <button className="pill pill-btn" onClick={() => setUserMenu(!userMenu)}>
+              <i className="fa-solid fa-circle-user" /> <span className="hide-sm">{user.name}</span>
+              <span className={`role-chip role-${user.role}`}>{t(ROLE_LABEL[user.role])}</span>
+            </button>
+            {userMenu && (
+              <div className="dropdown" onMouseLeave={() => setUserMenu(false)}>
+                <button onClick={() => { window.open('/', '_blank'); setUserMenu(false); }}><i className="fa-solid fa-globe" /> {t('ওয়েবসাইট দেখুন')}</button>
+                <button onClick={() => { setPwOpen(true); setUserMenu(false); }}><i className="fa-solid fa-key" /> {t('পাসওয়ার্ড পরিবর্তন')}</button>
+                <button onClick={() => { logout(); navigate('/login'); }}><i className="fa-solid fa-right-from-bracket" /> {t('লগআউট')}</button>
+              </div>
+            )}
+          </div>
         </div>
       </header>
 
@@ -91,23 +120,20 @@ export default function App() {
         <aside className={menuOpen ? 'sidebar open' : 'sidebar'}>
           {sections.map((section) => (
             <div key={section}>
-              <div className="nav-section">{section}</div>
+              <div className="nav-section">{t(section)}</div>
               {visible.filter((n) => n.section === section).map((n) => (
-                <button
-                  key={n.id}
-                  className={n.id === current.id ? 'nav active' : 'nav'}
-                  onClick={() => { setPage(n.id); setMenuOpen(false); }}
-                >
+                <button key={n.id} className={n.id === current.id ? 'nav active' : 'nav'} onClick={() => go(n.id)}>
                   <i className={`fa-solid ${n.icon}`} />
-                  {n.label}
+                  {t(n.label)}
                 </button>
               ))}
             </div>
           ))}
-          <div className="me">{user.name} · {ROLE_LABEL[user.role]}</div>
+          <div className="me">{user.name} · {t(ROLE_LABEL[user.role])}</div>
         </aside>
+        {menuOpen && <div className="scrim" onClick={() => setMenuOpen(false)} />}
         <main className="content">
-          {current.id === 'dashboard' && <Dashboard onNavigate={(p) => setPage(p as PageId)} />}
+          {current.id === 'dashboard' && <Dashboard onNavigate={(p) => go(p as PageId)} />}
           {current.id === 'repairs' && <Repairs />}
           {current.id === 'technicians' && <Technicians />}
           {current.id === 'pos' && <Pos />}
@@ -118,9 +144,40 @@ export default function App() {
           {current.id === 'parties' && <Parties />}
           {current.id === 'expenses' && <Expenses />}
           {current.id === 'reports' && <Reports />}
+          {current.id === 'website' && <Website />}
           {current.id === 'settings' && <Settings />}
         </main>
       </div>
+      {pwOpen && <ChangePassword onClose={() => setPwOpen(false)} />}
     </div>
+  );
+}
+
+function ChangePassword({ onClose }: { onClose: () => void }) {
+  const [current, setCurrent] = useState('');
+  const [next, setNext] = useState('');
+  const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
+
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    try {
+      await api('POST', '/me/password', { currentPassword: current, newPassword: next });
+      setMessage({ ok: true, text: t('পাসওয়ার্ড পরিবর্তন হয়েছে') });
+      setCurrent('');
+      setNext('');
+    } catch (err) {
+      setMessage({ ok: false, text: err instanceof Error ? err.message : 'Failed' });
+    }
+  }
+
+  return (
+    <Modal title={t('পাসওয়ার্ড পরিবর্তন')} onClose={onClose}>
+      <form onSubmit={submit}>
+        <label>{t('বর্তমান পাসওয়ার্ড')}<input type="password" required value={current} onChange={(e) => setCurrent(e.target.value)} autoComplete="current-password" /></label>
+        <label>{t('নতুন পাসওয়ার্ড')}<input type="password" required minLength={6} value={next} onChange={(e) => setNext(e.target.value)} autoComplete="new-password" /></label>
+        {message && <div className={message.ok ? 'ok' : 'error'}>{message.text}</div>}
+        <button className="primary">{t('সেভ')}</button>
+      </form>
+    </Modal>
   );
 }

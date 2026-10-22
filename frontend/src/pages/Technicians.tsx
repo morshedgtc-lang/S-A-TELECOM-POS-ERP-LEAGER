@@ -4,6 +4,7 @@ import { useAuth } from '../auth';
 import Modal from '../components/Modal';
 import { fmtDate } from '../labels';
 import type { Account, TechLedgerRow, Technician } from '../types';
+import { t } from '../i18n';
 
 const KIND_BN = { opening: 'ওপেনিং বকেয়া', job: 'কাজ', payment: 'পরিশোধ', adjustment: 'সমন্বয়' };
 
@@ -17,37 +18,37 @@ export default function Technicians() {
   const reload = () => api<Technician[]>('GET', '/technicians').then(setTechs).catch((e: Error) => setError(e.message));
   useEffect(() => { reload(); }, []);
 
-  const totalDue = techs.reduce((s, t) => s + t.balance, 0);
+  const totalDue = techs.reduce((s, tech) => s + tech.balance, 0);
 
   return (
     <section>
       <div className="toolbar">
-        <h2><i className="fa-solid fa-user-gear" /> কারিগর আউট-ওয়ার্ক</h2>
-        {can('manageRepairs') && <button className="btn-accent" onClick={() => setShowNew(true)}><i className="fa-solid fa-plus" /> কারিগর যোগ</button>}
+        <h2><i className="fa-solid fa-user-gear" /> {t('কারিগর আউট-ওয়ার্ক')}</h2>
+        {can('manageRepairs') && <button className="btn-accent" onClick={() => setShowNew(true)}><i className="fa-solid fa-plus" /> {t('কারিগর যোগ')}</button>}
       </div>
       <div className="hero hero-purple compact">
         <div className="tiles">
-          <div className="tile"><div className="tile-value">{techs.filter((t) => t.active).length}</div><div className="tile-label">সক্রিয় কারিগর</div></div>
-          <div className="tile"><div className="tile-value">{techs.reduce((s, t) => s + t.openJobs, 0)}</div><div className="tile-label">চলমান কাজ</div></div>
-          <div className="tile"><div className="tile-value">৳{money(totalDue)}</div><div className="tile-label">মোট বকেয়া মজুরি</div></div>
+          <div className="tile"><div className="tile-value">{techs.filter((tech) => tech.active).length}</div><div className="tile-label">{t('সক্রিয় কারিগর')}</div></div>
+          <div className="tile"><div className="tile-value">{techs.reduce((s, tech) => s + tech.openJobs, 0)}</div><div className="tile-label">{t('চলমান কাজ')}</div></div>
+          <div className="tile"><div className="tile-value">৳{money(totalDue)}</div><div className="tile-label">{t('মোট বকেয়া মজুরি')}</div></div>
         </div>
       </div>
       {error && <div className="error">{error}</div>}
       <div className="card">
         <table>
-          <thead><tr><th>নাম</th><th>মোবাইল</th><th>দক্ষতা</th><th className="num">চলমান</th><th className="num">বকেয়া</th><th /></tr></thead>
+          <thead><tr><th>{t('নাম')}</th><th>{t('মোবাইল')}</th><th>{t('দক্ষতা')}</th><th className="num">{t('চলমান')}</th><th className="num">{t('বকেয়া')}</th><th /></tr></thead>
           <tbody>
-            {techs.map((t) => (
-              <tr key={t.id} className={t.active ? '' : 'inactive'}>
-                <td>{t.name}{t.shopName && <small className="muted"> · {t.shopName}</small>}{!t.active && <span className="badge">Inactive</span>}</td>
-                <td>{t.mobile ?? '—'}</td>
-                <td>{t.specialties ?? '—'}</td>
-                <td className="num">{t.openJobs}</td>
-                <td className="num b">{money(t.balance)}</td>
-                <td><button className="ghost" onClick={() => setSelected(t)}>খাতা / পরিশোধ</button></td>
+            {techs.map((tech) => (
+              <tr key={tech.id} className={tech.active ? '' : 'inactive'}>
+                <td>{tech.name}{tech.shopName && <small className="muted"> · {tech.shopName}</small>}{!tech.active && <span className="badge">Inactive</span>}</td>
+                <td>{tech.mobile ?? '—'}</td>
+                <td>{tech.specialties ?? '—'}</td>
+                <td className="num">{tech.openJobs}</td>
+                <td className="num b">{money(tech.balance)}</td>
+                <td><button className="ghost" onClick={() => setSelected(tech)}>{t('খাতা / পরিশোধ')}</button></td>
               </tr>
             ))}
-            {techs.length === 0 && <tr><td colSpan={6} className="muted">এখনো কোনো কারিগর নেই।</td></tr>}
+            {techs.length === 0 && <tr><td colSpan={6} className="muted">{t('এখনো কোনো কারিগর নেই।')}</td></tr>}
           </tbody>
         </table>
       </div>
@@ -73,15 +74,15 @@ function NewTechnician({ onClose, onSaved }: { onClose: () => void; onSaved: () 
   }
 
   return (
-    <Modal title="কারিগর যোগ করুন" onClose={onClose}>
+    <Modal title={t('কারিগর যোগ করুন')} onClose={onClose}>
       <form onSubmit={submit}>
-        <label>নাম *<input required value={f.name} onChange={set('name')} /></label>
-        <label>মোবাইল<input value={f.mobile} onChange={set('mobile')} /></label>
-        <label>দোকান/ওয়ার্কশপ<input value={f.shopName} onChange={set('shopName')} /></label>
-        <label>দক্ষতা<input value={f.specialties} onChange={set('specialties')} placeholder="Display, Board repair" /></label>
-        <label>পূর্বের বকেয়া<input type="number" min="0" value={f.openingBalance} onChange={set('openingBalance')} /></label>
+        <label>{t('নাম *')}<input required value={f.name} onChange={set('name')} /></label>
+        <label>{t('মোবাইল')}<input value={f.mobile} onChange={set('mobile')} /></label>
+        <label>{t('দোকান/ওয়ার্কশপ')}<input value={f.shopName} onChange={set('shopName')} /></label>
+        <label>{t('দক্ষতা')}<input value={f.specialties} onChange={set('specialties')} placeholder="Display, Board repair" /></label>
+        <label>{t('পূর্বের বকেয়া')}<input type="number" min="0" value={f.openingBalance} onChange={set('openingBalance')} /></label>
         {error && <div className="error">{error}</div>}
-        <button className="primary">সেভ</button>
+        <button className="primary">{t('সেভ')}</button>
       </form>
     </Modal>
   );
@@ -108,7 +109,7 @@ function TechnicianLedger({ tech, onClose, onChanged }: { tech: Technician; onCl
       const r = await api<{ balance: number }>('POST', `/technicians/${tech.id}/payments`, { amount: Number(amount), accountId: Number(accountId) });
       setBalance(r.balance);
       setAmount(String(r.balance || ''));
-      setMessage({ ok: true, text: 'মজুরি পরিশোধ হয়েছে' });
+      setMessage({ ok: true, text: t('মজুরি পরিশোধ হয়েছে') });
       load();
       onChanged();
     } catch (e) {
@@ -123,38 +124,38 @@ function TechnicianLedger({ tech, onClose, onChanged }: { tech: Technician; onCl
   }
 
   return (
-    <Modal title={`${tech.name} — খাতা`} onClose={onClose} wide>
+    <Modal title={t('{name} — খাতা', { name: tech.name })} onClose={onClose} wide>
       <div className="detail-head">
-        <div className="big-due">বকেয়া: ৳{money(balance)}</div>
-        {can('manageRepairs') && <button className="ghost" onClick={toggleActive}>{tech.active ? 'Inactive করুন' : 'Active করুন'}</button>}
+        <div className="big-due">{t('বকেয়া: ৳')}{money(balance)}</div>
+        {can('manageRepairs') && <button className="ghost" onClick={toggleActive}>{tech.active ? t('Inactive করুন') : t('Active করুন')}</button>}
       </div>
       {message && <div className={message.ok ? 'ok' : 'error'}>{message.text}</div>}
       {can('manageMoney') && balance > 0 && (
         <div className="sub-form">
           <div className="form-grid">
-            <label>পরিমাণ<input type="number" min="0" value={amount} onChange={(e) => setAmount(e.target.value)} /></label>
-            <label>যে একাউন্ট থেকে
+            <label>{t('পরিমাণ')}<input type="number" min="0" value={amount} onChange={(e) => setAmount(e.target.value)} /></label>
+            <label>{t('যে একাউন্ট থেকে')}
               <select value={accountId} onChange={(e) => setAccountId(e.target.value)}>
-                {accounts.map((a) => <option key={a.id} value={a.id}>{a.name} (৳{money(a.balance)})</option>)}
+                {accounts.map((a) => <option key={a.id} value={a.id}>{a.name} {t('(৳')}{money(a.balance)})</option>)}
               </select>
             </label>
           </div>
-          <button className="primary" onClick={pay}>মজুরি পরিশোধ</button>
+          <button className="primary" onClick={pay}>{t('মজুরি পরিশোধ')}</button>
         </div>
       )}
       <table>
-        <thead><tr><th>তারিখ</th><th>ধরন</th><th>জব</th><th>নোট</th><th className="num">পরিমাণ</th></tr></thead>
+        <thead><tr><th>{t('তারিখ')}</th><th>{t('ধরন')}</th><th>{t('জব')}</th><th>{t('নোট')}</th><th className="num">{t('পরিমাণ')}</th></tr></thead>
         <tbody>
           {rows.map((r) => (
             <tr key={r.id}>
               <td>{fmtDate(r.createdAt)}</td>
-              <td>{KIND_BN[r.kind]}</td>
+              <td>{t(KIND_BN[r.kind])}</td>
               <td>{r.jobNo ?? '—'}</td>
               <td>{r.note ?? ''}</td>
               <td className={r.amount < 0 ? 'num ok-text' : 'num warn'}>{r.amount < 0 ? '-' : '+'}{money(Math.abs(r.amount))}</td>
             </tr>
           ))}
-          {rows.length === 0 && <tr><td colSpan={5} className="muted">কোনো লেনদেন নেই।</td></tr>}
+          {rows.length === 0 && <tr><td colSpan={5} className="muted">{t('কোনো লেনদেন নেই।')}</td></tr>}
         </tbody>
       </table>
     </Modal>

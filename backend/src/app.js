@@ -5,7 +5,8 @@ import { fileURLToPath } from 'node:url';
 import { config } from './config.js';
 import { requireAuth } from './lib/auth.js';
 import { HttpError } from './lib/http.js';
-import { authRouter, usersRouter } from './routes/auth.js';
+import { authRouter, changeOwnPassword, usersRouter } from './routes/auth.js';
+import { publicRouter, siteRouter } from './routes/public.js';
 import { catalogRouter, productsRouter } from './routes/catalog.js';
 import { customersRouter, suppliersRouter } from './routes/parties.js';
 import { salesRouter } from './routes/sales.js';
@@ -16,22 +17,25 @@ import { lookupRouter, reportsRouter, settingsRouter } from './routes/reports.js
 
 export function createApp(db) {
   const app = express();
-  app.use(express.json({ limit: '1mb' }));
+  app.set('trust proxy', 1); // Railway and most hosts sit behind one proxy; needed for per-IP limits
+  app.use(express.json({ limit: '4mb' }));
 
   app.use((req, res, next) => {
     res.set('Access-Control-Allow-Origin', config.corsOrigin);
     res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    res.set('Access-Control-Allow-Methods', 'GET, POST, PATCH, OPTIONS');
+    res.set('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, OPTIONS');
     if (req.method === 'OPTIONS') return res.sendStatus(204);
     next();
   });
 
   app.get('/api/health', (_req, res) => res.json({ ok: true }));
   app.use('/api/auth', authRouter(db));
+  app.use('/api/public', publicRouter(db));
 
   const api = express.Router();
   api.use(requireAuth(db));
   api.get('/me', (req, res) => res.json({ user: req.user }));
+  api.post('/me/password', changeOwnPassword(db));
   api.use('/users', usersRouter(db));
   api.use('/catalog', catalogRouter(db));
   api.use('/products', productsRouter(db));
@@ -47,6 +51,7 @@ export function createApp(db) {
   api.use('/technicians', techniciansRouter(db));
   api.use('/reports', reportsRouter(db));
   api.use('/lookup', lookupRouter(db));
+  api.use('/settings/site', siteRouter(db));
   api.use('/settings', settingsRouter(db));
   app.use('/api', api);
   app.use('/api', (_req, res) => res.status(404).json({ error: 'Not found' }));

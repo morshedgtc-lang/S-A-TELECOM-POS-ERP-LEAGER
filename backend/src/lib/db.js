@@ -3,6 +3,7 @@ import { mkdirSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { config } from '../config.js';
+import { migrate } from '../migrations/index.js';
 
 const schemaPath = resolve(dirname(fileURLToPath(import.meta.url)), '..', 'schema.sql');
 
@@ -12,6 +13,7 @@ export function openDb(file = config.dbFile) {
   db.exec('PRAGMA foreign_keys = ON;');
   if (file !== ':memory:') db.exec('PRAGMA journal_mode = WAL;');
   db.exec(readFileSync(schemaPath, 'utf8'));
+  migrate(db);
   return db;
 }
 

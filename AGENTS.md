@@ -35,11 +35,18 @@ Environment variables (see `backend/.env.example`): `PORT`, `DB_FILE`, `JWT_SECR
 2. **Money and stock writes are transactional.** Use `tx(db, fn)` for any change touching more than one table. Route all cash movement through `moveMoney` in `lib/ledger.js` so the `payments` ledger stays complete.
 3. **Never let stock or account balances go negative** from the API. Keep the `CHECK` constraints in `schema.sql` and the checks in the routes.
 4. **Serialized products** (`serialized = 1`) change stock only through purchases (create units) and sales (mark units `sold`). Do not edit `products.stock` directly for them.
-5. **Permission model:** owner has everything. Manager and staff get defaults from `ROLE_PERMISSIONS` in `lib/auth.js`, overridable per user. New actions go into `ACTIONS` and into the defaults.
+5. **Permission model:** roles rank owner (Super Admin) > admin > manager > staff (`ROLE_RANK`). Owner and admin have everything; only the owner can create or change owners and admins, and the last active owner cannot be removed. Manager and staff get defaults from `ROLE_PERMISSIONS` in `lib/auth.js`, overridable per user. New actions go into `ACTIONS` and into the defaults.
 6. **Passwords** are stored only as scrypt hashes (`hashPassword`). Never log, return, or store plain passwords.
 7. **Errors:** throw `httpError(status, message)`. Messages are user-facing and may be shown in the UI.
 8. **Audit:** every create or change writes an `audit(...)` row.
 9. **Schema changes:** `schema.sql` is idempotent (`CREATE ... IF NOT EXISTS`). Until a migration tool exists, a breaking change needs a new file in `backend/src/migrations/` plus a note in the PR. Do not drop data silently.
+
+## Frontend language and theme
+
+- All UI text goes through `t()` from `src/i18n.tsx`. The Bangla text is the key; add the English to `src/i18n.en.ts` in the same change.
+- Call `t()` at render time, never in a module-level constant (keep the raw Bangla there and wrap it where it is rendered).
+- Colours come from the CSS variables in `styles.css` (`--rose`, `--green`, `--red`, …); both `data-theme="dark"` and light must stay readable.
+- Paths: `/` public site, `/login`, `/app/<page>`. The server returns `index.html` for every non-API path.
 
 ## Code style
 

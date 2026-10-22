@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { api } from '../api';
 import { fmtDate, STATUS } from '../labels';
 import type { ImeiResult } from '../types';
+import { t } from '../i18n';
 
 export default function Imei() {
   const [q, setQ] = useState('');
@@ -20,36 +21,36 @@ export default function Imei() {
 
   return (
     <section>
-      <h2><i className="fa-solid fa-mobile-screen-button" /> IMEI লুকআপ</h2>
+      <h2><i className="fa-solid fa-mobile-screen-button" /> {t('IMEI লুকআপ')}</h2>
       <form className="inline card" onSubmit={search}>
-        <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="IMEI / সিরিয়াল স্ক্যান বা টাইপ করুন" inputMode="numeric" style={{ flex: 1 }} />
-        <button><i className="fa-solid fa-magnifying-glass" /> খুঁজুন</button>
+        <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('IMEI / সিরিয়াল স্ক্যান বা টাইপ করুন')} inputMode="numeric" style={{ flex: 1 }} />
+        <button><i className="fa-solid fa-magnifying-glass" /> {t('খুঁজুন')}</button>
       </form>
       {error && <div className="error">{error}</div>}
       {data && (
         <>
           <div className="card">
-            <h3>স্টক / বিক্রয় ইতিহাস</h3>
+            <h3>{t('স্টক / বিক্রয় ইতিহাস')}</h3>
             <table>
-              <thead><tr><th>IMEI</th><th>পণ্য</th><th>অবস্থা</th><th>ক্রয়</th><th>বিক্রয়</th></tr></thead>
+              <thead><tr><th>IMEI</th><th>{t('পণ্য')}</th><th>{t('অবস্থা')}</th><th>{t('ক্রয়')}</th><th>{t('বিক্রয়')}</th></tr></thead>
               <tbody>
                 {data.units.map((u) => (
                   <tr key={u.serial}>
                     <td className="b">{u.serial}</td>
                     <td>{u.productName}</td>
-                    <td>{u.status === 'in_stock' ? <span className="badge ok">স্টকে আছে</span> : <span className="badge danger">বিক্রি হয়েছে</span>}</td>
+                    <td>{u.status === 'in_stock' ? <span className="badge ok">{t('স্টকে আছে')}</span> : <span className="badge danger">{t('বিক্রি হয়েছে')}</span>}</td>
                     <td>{u.purchaseNo ? <>{u.supplierName}<div className="muted">{u.purchaseNo} · {fmtDate(u.purchasedAt, false)}</div></> : '—'}</td>
                     <td>{u.status === 'sold' && u.saleNo ? <>{u.customerName ?? 'Walk-in'}<div className="muted">{u.saleNo} · {fmtDate(u.soldAt, false)}</div></> : '—'}</td>
                   </tr>
                 ))}
-                {data.units.length === 0 && <tr><td colSpan={5} className="muted">স্টকে বা বিক্রয়ে পাওয়া যায়নি।</td></tr>}
+                {data.units.length === 0 && <tr><td colSpan={5} className="muted">{t('স্টকে বা বিক্রয়ে পাওয়া যায়নি।')}</td></tr>}
               </tbody>
             </table>
           </div>
           <div className="card">
-            <h3>সার্ভিস ইতিহাস</h3>
+            <h3>{t('সার্ভিস ইতিহাস')}</h3>
             <table>
-              <thead><tr><th>জব</th><th>ডিভাইস</th><th>কাস্টমার</th><th>স্ট্যাটাস</th><th>তারিখ</th></tr></thead>
+              <thead><tr><th>{t('জব')}</th><th>{t('ডিভাইস')}</th><th>{t('কাস্টমার')}</th><th>{t('স্ট্যাটাস')}</th><th>{t('তারিখ')}</th></tr></thead>
               <tbody>
                 {data.repairs.map((r) => (
                   <tr key={r.id}>
@@ -59,7 +60,7 @@ export default function Imei() {
                     <td>{fmtDate(r.createdAt, false)}</td>
                   </tr>
                 ))}
-                {data.repairs.length === 0 && <tr><td colSpan={5} className="muted">কোনো সার্ভিস রেকর্ড নেই।</td></tr>}
+                {data.repairs.length === 0 && <tr><td colSpan={5} className="muted">{t('কোনো সার্ভিস রেকর্ড নেই।')}</td></tr>}
               </tbody>
             </table>
           </div>

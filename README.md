@@ -9,7 +9,7 @@ Rewritten from the single-file browser app in [legacy/](legacy/SA_Telecom_POS_v1
 ```
 backend/    Node 24 API (Express 5, node:sqlite, JWT)
 frontend/   React 18 + Vite + TypeScript
-docs/       ERD and legacy analysis
+docs/       product plan, ERD and legacy analysis
 legacy/     original single-file app (reference only)
 AGENTS.md   contributor and agent guide (read this first)
 CLAUDE.md   imports AGENTS.md
@@ -33,7 +33,7 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:5173. Sign in with `owner` and the password from `OWNER_PASSWORD` (default `change-me-now` — **change it before any real use**). Set `OWNER_PASSWORD` in `backend/.env` or the environment before the first start, because the owner is created on first boot.
+Open http://localhost:5173 for the public website, or http://localhost:5173/login to sign in. Sign in with `owner` and the password from `OWNER_PASSWORD` (default `change-me-now` — **change it before any real use**). Set `OWNER_PASSWORD` in `backend/.env` or the environment before the first start, because the owner is created on first boot.
 
 ## Tests
 
@@ -52,6 +52,9 @@ cd frontend && npm run build
 
 | Module | Backend | Frontend |
 |--------|---------|----------|
+| Public website (hero banner, services, contact, repair tracking) | yes | yes |
+| Super Admin / Admin / Manager / Staff roles | yes | yes |
+| English / Bangla switch, rose-dark and light themes | — | yes |
 | Login, roles, permissions | yes | yes |
 | Dashboard (cash, hold amount, service track, out-work) | yes | yes |
 | Repair job cards (service tracker), parts, delivery billing | yes | yes |

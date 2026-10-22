@@ -117,7 +117,7 @@ erDiagram
         TEXT serials
     }
     SETTINGS {
-        TEXT key PK "shopName, shopPhone, shopAddress, invoiceFooter, repairTerms"
+        TEXT key PK "shopName, shopPhone, shopAddress, invoiceFooter, repairTerms, site (JSON website content)"
         TEXT value
     }
 
@@ -126,7 +126,7 @@ erDiagram
         TEXT name
         TEXT mobile
         TEXT password_hash "scrypt"
-        TEXT role "owner | manager | staff"
+        TEXT role "owner (Super Admin) | admin | manager | staff"
         INTEGER active
         REAL basic_salary
         TEXT permissions "JSON map of action to bool"
@@ -262,6 +262,8 @@ erDiagram
 ```
 
 `AUDIT_LOGS` has no foreign key on purpose: it keeps history even if a user is later removed.
+
+`schema_migrations` records one-off migrations in `backend/src/migrations/` (for example `001_users_admin_role`, which rebuilt `users` to allow the admin role).
 
 ## Invariants the code keeps
 

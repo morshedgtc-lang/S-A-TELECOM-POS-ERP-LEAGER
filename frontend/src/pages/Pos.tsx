@@ -4,6 +4,7 @@ import { useAuth } from '../auth';
 import { printSaleInvoice } from '../print';
 import { getShop } from '../shop';
 import type { Account, Party, Product, SaleDetail } from '../types';
+import { t } from '../i18n';
 
 interface CartLine {
   product: Product;
@@ -51,7 +52,7 @@ export default function Pos() {
   function addProduct(p: Product, serial?: string) {
     setMessage(null);
     if (p.serialized && !serial) {
-      const s = window.prompt(`${p.name} — IMEI / সিরিয়াল স্ক্যান করুন`);
+      const s = window.prompt(t('{name} — IMEI / সিরিয়াল স্ক্যান করুন', { name: p.name }));
       if (!s?.trim()) return;
       return void scanSerial(s.trim());
     }
@@ -59,7 +60,7 @@ export default function Pos() {
       const i = prev.findIndex((l) => l.product.id === p.id);
       if (serial) {
         if (prev.some((l) => l.serials.includes(serial))) {
-          setMessage({ ok: false, text: 'এই IMEI কার্টে আছে' });
+          setMessage({ ok: false, text: t('এই IMEI কার্টে আছে') });
           return prev;
         }
         if (i >= 0) return prev.map((l, j) => (j === i ? { ...l, qty: l.qty + 1, serials: [...l.serials, serial] } : l));
@@ -67,7 +68,7 @@ export default function Pos() {
       }
       const inCart = i >= 0 ? prev[i].qty : 0;
       if (inCart + 1 > p.stock) {
-        setMessage({ ok: false, text: `${p.name}: স্টকে মাত্র ${p.stock} টি` });
+        setMessage({ ok: false, text: t('{name}: স্টকে মাত্র {n} টি', { name: p.name, n: p.stock }) });
         return prev;
       }
       if (i >= 0) return prev.map((l, j) => (j === i ? { ...l, qty: l.qty + 1 } : l));
@@ -121,7 +122,7 @@ export default function Pos() {
         items: cart.map((l) => ({ productId: l.product.id, qty: l.qty, unitPrice: l.unitPrice, serials: l.serials })),
       });
       if (autoPrint) printSaleInvoice(sale, await getShop());
-      setMessage({ ok: true, text: `✅ ${sale.invoiceNo} সেভ হয়েছে — মোট ৳${money(sale.total)}${sale.due ? `, বাকি ৳${money(sale.due)}` : ''}` });
+      setMessage({ ok: true, text: `✅ ${t('{inv} সেভ হয়েছে — মোট ৳{total}', { inv: sale.invoiceNo, total: money(sale.total) })}${sale.due ? `, ${t('বাকি')} ৳${money(sale.due)}` : ''}` });
       setCart([]);
       setPaid('');
       setDiscount('');
@@ -142,7 +143,7 @@ export default function Pos() {
         <form className="pos-search" onSubmit={onSearchSubmit}>
           <i className="fa-solid fa-barcode" />
           <input ref={searchRef} autoFocus value={search} onChange={(e) => setSearch(e.target.value)}
-            placeholder="পণ্যের নাম / SKU লিখুন বা IMEI স্ক্যান করে Enter চাপুন" />
+            placeholder={t('পণ্যের নাম / SKU লিখুন বা IMEI স্ক্যান করে Enter চাপুন')} />
         </form>
         {message && <div className={message.ok ? 'ok' : 'error'}>{message.text}</div>}
         <div className="product-grid">
@@ -153,17 +154,17 @@ export default function Pos() {
                 <div className="pt-name">{p.name}</div>
                 <div className="pt-price">৳{money(p.salePrice)}</div>
                 <div className={p.isLowStock ? 'pt-stock warn' : 'pt-stock'}>
-                  {p.serialized ? <><i className="fa-solid fa-barcode" /> IMEI · </> : null}স্টক {p.stock}
+                  {p.serialized ? <><i className="fa-solid fa-barcode" /> IMEI · </> : null}{t('স্টক')} {p.stock}
                 </div>
               </button>
             );
           })}
-          {matches.length === 0 && <div className="muted">কোনো পণ্য পাওয়া যায়নি।</div>}
+          {matches.length === 0 && <div className="muted">{t('কোনো পণ্য পাওয়া যায়নি।')}</div>}
         </div>
       </div>
 
       <div className="pos-right card">
-        <h3><i className="fa-solid fa-cart-shopping" /> কার্ট ({cart.length})</h3>
+        <h3><i className="fa-solid fa-cart-shopping" /> {t('কার্ট (')}{cart.length})</h3>
         <div className="cart-lines">
           {cart.map((l, i) => (
             <div key={i} className="cart-line">
@@ -185,28 +186,28 @@ export default function Pos() {
               </div>
             </div>
           ))}
-          {cart.length === 0 && <p className="muted">পণ্যে ক্লিক করুন বা IMEI স্ক্যান করুন।</p>}
+          {cart.length === 0 && <p className="muted">{t('পণ্যে ক্লিক করুন বা IMEI স্ক্যান করুন।')}</p>}
         </div>
 
         <div className="totals">
-          <div><span>সাবটোটাল</span><span>{money(subtotal)}</span></div>
+          <div><span>{t('সাবটোটাল')}</span><span>{money(subtotal)}</span></div>
           {can('giveDiscount') && (
-            <div><span>ডিসকাউন্ট</span><input type="number" min="0" value={discount} onChange={(e) => setDiscount(e.target.value)} placeholder="0" /></div>
+            <div><span>{t('ডিসকাউন্ট')}</span><input type="number" min="0" value={discount} onChange={(e) => setDiscount(e.target.value)} placeholder="0" /></div>
           )}
-          <div className="grand"><span>মোট</span><span>৳{money(total)}</span></div>
+          <div className="grand"><span>{t('মোট')}</span><span>৳{money(total)}</span></div>
         </div>
 
         {newCustomer ? (
           <div className="form-grid">
-            <label>নতুন কাস্টমার<input value={newCustomer.name} onChange={(e) => setNewCustomer({ ...newCustomer, name: e.target.value })} placeholder="নাম" /></label>
-            <label>মোবাইল<input value={newCustomer.mobile} onChange={(e) => setNewCustomer({ ...newCustomer, mobile: e.target.value })} /></label>
+            <label>{t('নতুন কাস্টমার')}<input value={newCustomer.name} onChange={(e) => setNewCustomer({ ...newCustomer, name: e.target.value })} placeholder={t('নাম')} /></label>
+            <label>{t('মোবাইল')}<input value={newCustomer.mobile} onChange={(e) => setNewCustomer({ ...newCustomer, mobile: e.target.value })} /></label>
           </div>
         ) : (
-          <label>কাস্টমার
+          <label>{t('কাস্টমার')}
             <div className="inline" style={{ margin: 0 }}>
               <select value={customerId} onChange={(e) => setCustomerId(e.target.value)} style={{ flex: 1 }}>
-                <option value="">Walk-in (পুরো টাকা দিতে হবে)</option>
-                {customers.map((c) => <option key={c.id} value={c.id}>{c.name}{c.mobile ? ` · ${c.mobile}` : ''}{c.balance > 0 ? ` (বাকি ${money(c.balance)})` : ''}</option>)}
+                <option value="">{t('Walk-in (পুরো টাকা দিতে হবে)')}</option>
+                {customers.map((c) => <option key={c.id} value={c.id}>{c.name}{c.mobile ? ` · ${c.mobile}` : 't('}{c.balance > 0 ? ` (বাকি ${money(c.balance)})` : ')'}</option>)}
               </select>
               <button type="button" className="ghost" onClick={() => setNewCustomer({ name: '', mobile: '' })}><i className="fa-solid fa-user-plus" /></button>
             </div>
@@ -214,20 +215,20 @@ export default function Pos() {
         )}
 
         <div className="form-grid">
-          <label>পরিশোধ<input type="number" min="0" value={paid === '' ? String(total) : paid} onChange={(e) => setPaid(e.target.value)} /></label>
-          <label>একাউন্ট
+          <label>{t('পরিশোধ')}<input type="number" min="0" value={paid === '' ? String(total) : paid} onChange={(e) => setPaid(e.target.value)} /></label>
+          <label>{t('একাউন্ট')}
             <select value={accountId} onChange={(e) => setAccountId(e.target.value)}>
               {accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
             </select>
           </label>
         </div>
         <div className="pay-hints">
-          {due > 0 && <span className="warn">বাকি: ৳{money(due)}</span>}
-          {change > 0 && <span className="ok-text">ফেরত দিন: ৳{money(change)}</span>}
+          {due > 0 && <span className="warn">{t('বাকি: ৳')}{money(due)}</span>}
+          {change > 0 && <span className="ok-text">{t('ফেরত দিন: ৳')}{money(change)}</span>}
         </div>
-        <label className="check"><input type="checkbox" checked={autoPrint} onChange={(e) => setAutoPrint(e.target.checked)} /> বিক্রয়ের পর ইনভয়েস প্রিন্ট</label>
+        <label className="check"><input type="checkbox" checked={autoPrint} onChange={(e) => setAutoPrint(e.target.checked)} /> {t('বিক্রয়ের পর ইনভয়েস প্রিন্ট')}</label>
         <button className="primary btn-accent" disabled={cart.length === 0 || busy} onClick={checkout}>
-          <i className="fa-solid fa-check" /> বিক্রয় সম্পন্ন (৳{money(total)})
+          <i className="fa-solid fa-check" /> {t('বিক্রয় সম্পন্ন (৳')}{money(total)})
         </button>
       </div>
     </section>

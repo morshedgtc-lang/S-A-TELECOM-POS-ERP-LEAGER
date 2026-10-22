@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS users (
   name          TEXT NOT NULL,
   mobile        TEXT,
   password_hash TEXT NOT NULL,
-  role          TEXT NOT NULL CHECK (role IN ('owner', 'manager', 'staff')),
+  role          TEXT NOT NULL CHECK (role IN ('owner', 'admin', 'manager', 'staff')),  -- owner = Super Admin
   active        INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0, 1)),
   basic_salary  REAL NOT NULL DEFAULT 0 CHECK (basic_salary >= 0),
   permissions   TEXT NOT NULL DEFAULT '{}',          -- JSON map: action -> boolean

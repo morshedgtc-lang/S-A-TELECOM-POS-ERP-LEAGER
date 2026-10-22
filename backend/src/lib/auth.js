@@ -26,8 +26,12 @@ export const ACTIONS = [
 const ALL_TRUE = Object.fromEntries(ACTIONS.map((a) => [a, true]));
 const ALL_FALSE = Object.fromEntries(ACTIONS.map((a) => [a, false]));
 
+/** owner is shown as "Super Admin". A user can only create or change users ranked below them. */
+export const ROLE_RANK = { owner: 4, admin: 3, manager: 2, staff: 1 };
+
 export const ROLE_PERMISSIONS = {
   owner: ALL_TRUE,
+  admin: ALL_TRUE,
   manager: {
     ...ALL_FALSE,
     sell: true,

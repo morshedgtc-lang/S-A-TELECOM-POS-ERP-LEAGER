@@ -6,6 +6,7 @@ import { fmtDate, NEXT_STATUS, STATUS } from '../labels';
 import { printJobCard } from '../print';
 import { getShop } from '../shop';
 import type { Account, Dashboard, Product, RepairDetail, RepairJob, RepairStatus, Technician } from '../types';
+import { t } from '../i18n';
 
 type Filter = 'open' | RepairStatus;
 const FILTERS: Filter[] = ['open', 'in_work', 'out_work', 'success', 'failed', 'delivered'];
@@ -28,8 +29,8 @@ export default function Repairs() {
   }, [filter, q]);
 
   useEffect(() => {
-    const t = setTimeout(reload, 200);
-    return () => clearTimeout(t);
+    const timer = setTimeout(reload, 200);
+    return () => clearTimeout(timer);
   }, [reload]);
 
   const countFor = (f: Filter) => {
@@ -42,11 +43,11 @@ export default function Repairs() {
   return (
     <section>
       <div className="toolbar">
-        <h2><i className="fa-solid fa-screwdriver-wrench" /> সার্ভিস ট্র্যাকার</h2>
+        <h2><i className="fa-solid fa-screwdriver-wrench" /> {t('সার্ভিস ট্র্যাকার')}</h2>
         <div className="inline">
-          <input placeholder="জব নং, মোবাইল, IMEI, ডিভাইস…" value={q} onChange={(e) => setQ(e.target.value)} />
+          <input placeholder={t('জব নং, মোবাইল, IMEI, ডিভাইস…')} value={q} onChange={(e) => setQ(e.target.value)} />
           {can('manageRepairs') && (
-            <button className="btn-accent" onClick={() => setShowNew(true)}><i className="fa-solid fa-plus" /> নতুন জব</button>
+            <button className="btn-accent" onClick={() => setShowNew(true)}><i className="fa-solid fa-plus" /> {t('নতুন জব')}</button>
           )}
         </div>
       </div>
@@ -58,7 +59,7 @@ export default function Repairs() {
           return (
             <button key={f} className={f === filter ? 'status-tab active' : 'status-tab'} style={{ '--c': color } as CSSProperties}
               onClick={() => setFilter(f)}>
-              {f === 'open' ? 'চলমান সব' : STATUS[f].label}{n !== null && <span className="count">{n}</span>}
+              {f === 'open' ? t('চলমান সব') : STATUS[f].label}{n !== null && <span className="count">{n}</span>}
             </button>
           );
         })}
@@ -66,8 +67,8 @@ export default function Repairs() {
 
       {counts && filter === 'open' && (
         <div className="hold-strip">
-          <span><i className="fa-solid fa-coins" /> হোল্ড (আনুমানিক): <b>৳{money(counts.holdTotal)}</b></span>
-          <span><i className="fa-solid fa-hand-holding-dollar" /> অগ্রিম জমা: <b>৳{money(counts.advanceHeld)}</b></span>
+          <span><i className="fa-solid fa-coins" /> {t('হোল্ড (আনুমানিক):')} <b>৳{money(counts.holdTotal)}</b></span>
+          <span><i className="fa-solid fa-hand-holding-dollar" /> {t('অগ্রিম জমা:')} <b>৳{money(counts.advanceHeld)}</b></span>
         </div>
       )}
 
@@ -87,12 +88,12 @@ export default function Repairs() {
             <div className="job-side">
               <div className="b">{j.customerName}</div>
               <div className="muted">{j.customerMobile ?? ''}</div>
-              <div>{j.status === 'delivered' ? `বিল ৳${money(j.total)}` : `আনুমানিক ৳${money(j.estimatedCost)}`}</div>
+              <div>{j.status === 'delivered' ? t('বিল ৳{amount}', { amount: money(j.total) }) : t('আনুমানিক ৳{amount}', { amount: money(j.estimatedCost) })}</div>
               <small className="muted">{fmtDate(j.createdAt)}</small>
             </div>
           </button>
         ))}
-        {jobs.length === 0 && <div className="card muted">কোনো জব নেই।</div>}
+        {jobs.length === 0 && <div className="card muted">{t('কোনো জব নেই।')}</div>}
       </div>
 
       {showNew && <NewJob onClose={() => setShowNew(false)} onCreated={(id) => { setShowNew(false); reload(); setOpenId(id); }} />}
@@ -153,28 +154,28 @@ function NewJob({ onClose, onCreated }: { onClose: () => void; onCreated: (id: n
   }
 
   return (
-    <Modal title="নতুন সার্ভিস জব" onClose={onClose} wide>
+    <Modal title={t('নতুন সার্ভিস জব')} onClose={onClose} wide>
       <form onSubmit={submit}>
         <div className="form-grid">
-          <label>কাস্টমারের নাম *<input required value={f.name} onChange={set('name')} /></label>
-          <label>মোবাইল<input value={f.mobile} onChange={set('mobile')} inputMode="tel" placeholder="01XXXXXXXXX" /></label>
-          <label>ডিভাইস (ব্র্যান্ড/মডেল) *<input required value={f.device} onChange={set('device')} placeholder="Samsung A52" /></label>
+          <label>{t('কাস্টমারের নাম *')}<input required value={f.name} onChange={set('name')} /></label>
+          <label>{t('মোবাইল')}<input value={f.mobile} onChange={set('mobile')} inputMode="tel" placeholder="01XXXXXXXXX" /></label>
+          <label>{t('ডিভাইস (ব্র্যান্ড/মডেল) *')}<input required value={f.device} onChange={set('device')} placeholder="Samsung A52" /></label>
           <label>IMEI<input value={f.imei} onChange={set('imei')} inputMode="numeric" /></label>
-          <label className="span-2">সমস্যা *<textarea required rows={2} value={f.problem} onChange={set('problem')} placeholder="Display ভাঙা, চার্জ হয় না…" /></label>
-          <label className="span-2">সাথে যা রাখা হলো<input value={f.accessories} onChange={set('accessories')} placeholder="ব্যাক কভার, সিম, মেমোরি…" /></label>
-          <label>আনুমানিক খরচ<input type="number" min="0" value={f.estimatedCost} onChange={set('estimatedCost')} /></label>
-          <label>ডেলিভারির তারিখ<input type="date" value={f.promisedAt} onChange={set('promisedAt')} /></label>
-          <label>অগ্রিম<input type="number" min="0" value={f.advance} onChange={set('advance')} /></label>
-          <label>অগ্রিম জমা হবে
+          <label className="span-2">{t('সমস্যা *')}<textarea required rows={2} value={f.problem} onChange={set('problem')} placeholder={t('Display ভাঙা, চার্জ হয় না…')} /></label>
+          <label className="span-2">{t('সাথে যা রাখা হলো')}<input value={f.accessories} onChange={set('accessories')} placeholder={t('ব্যাক কভার, সিম, মেমোরি…')} /></label>
+          <label>{t('আনুমানিক খরচ')}<input type="number" min="0" value={f.estimatedCost} onChange={set('estimatedCost')} /></label>
+          <label>{t('ডেলিভারির তারিখ')}<input type="date" value={f.promisedAt} onChange={set('promisedAt')} /></label>
+          <label>{t('অগ্রিম')}<input type="number" min="0" value={f.advance} onChange={set('advance')} /></label>
+          <label>{t('অগ্রিম জমা হবে')}
             <select value={accountId} onChange={set('accountId')}>
               {accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
             </select>
           </label>
-          <label className="span-2">নোট<input value={f.note} onChange={set('note')} /></label>
+          <label className="span-2">{t('নোট')}<input value={f.note} onChange={set('note')} /></label>
         </div>
-        <p className="muted">একই মোবাইল নম্বরের কাস্টমার থাকলে সেটিই ব্যবহার হবে। সেভ করলে জব কার্ড প্রিন্ট হবে।</p>
+        <p className="muted">{t('একই মোবাইল নম্বরের কাস্টমার থাকলে সেটিই ব্যবহার হবে। সেভ করলে জব কার্ড প্রিন্ট হবে।')}</p>
         {error && <div className="error">{error}</div>}
-        <button className="primary" disabled={busy}>{busy ? 'সেভ হচ্ছে…' : 'জব সেভ ও প্রিন্ট'}</button>
+        <button className="primary" disabled={busy}>{busy ? t('সেভ হচ্ছে…') : t('জব সেভ ও প্রিন্ট')}</button>
       </form>
     </Modal>
   );
@@ -206,7 +207,7 @@ function JobDetail({ id, onClose, onChanged }: { id: number; onClose: () => void
   }
 
   if (!job) {
-    return <Modal title="জব" onClose={onClose}>{error ? <div className="error">{error}</div> : <p className="muted">লোড হচ্ছে…</p>}</Modal>;
+    return <Modal title={t('জব')} onClose={onClose}>{error ? <div className="error">{error}</div> : <p className="muted">{t('লোড হচ্ছে…')}</p>}</Modal>;
   }
 
   const open = job.status !== 'delivered';
@@ -217,28 +218,28 @@ function JobDetail({ id, onClose, onChanged }: { id: number; onClose: () => void
     <Modal title={`${job.jobNo} · ${job.device}`} onClose={onClose} wide>
       <div className="detail-head">
         <StatusBadge status={job.status} outcome={job.outcome} />
-        <button className="ghost" onClick={async () => printJobCard(job, await getShop())}><i className="fa-solid fa-print" /> জব কার্ড প্রিন্ট</button>
+        <button className="ghost" onClick={async () => printJobCard(job, await getShop())}><i className="fa-solid fa-print" /> {t('জব কার্ড প্রিন্ট')}</button>
       </div>
 
       <div className="info-grid">
-        <Info label="কাস্টমার" value={`${job.customerName}${job.customerMobile ? ` · ${job.customerMobile}` : ''}`} />
+        <Info label={t('কাস্টমার')} value={`${job.customerName}${job.customerMobile ? ` · ${job.customerMobile}` : ''}`} />
         <Info label="IMEI" value={job.imei ?? '—'} />
-        <Info label="সমস্যা" value={job.problem} />
-        <Info label="সাথে রাখা" value={job.accessories ?? '—'} />
-        <Info label="আনুমানিক খরচ" value={`৳${money(job.estimatedCost)}`} />
-        <Info label="অগ্রিম" value={`৳${money(job.advance)}`} />
-        <Info label="ডেলিভারির তারিখ" value={fmtDate(job.promisedAt, false)} />
-        <Info label="রিসিভ" value={fmtDate(job.createdAt)} />
+        <Info label={t('সমস্যা')} value={job.problem} />
+        <Info label={t('সাথে রাখা')} value={job.accessories ?? '—'} />
+        <Info label={t('আনুমানিক খরচ')} value={`৳${money(job.estimatedCost)}`} />
+        <Info label={t('অগ্রিম')} value={`৳${money(job.advance)}`} />
+        <Info label={t('ডেলিভারির তারিখ')} value={fmtDate(job.promisedAt, false)} />
+        <Info label={t('রিসিভ')} value={fmtDate(job.createdAt)} />
         {job.technicianName && (
-          <Info label="কারিগর" value={`${job.technicianName}${job.technicianCost !== undefined ? ` · মজুরি ৳${money(job.technicianCost)}` : ''}`} />
+          <Info label={t('কারিগর')} value={`${job.technicianName}${job.technicianCost !== undefined ? ` · ${t('মজুরি')} ৳${money(job.technicianCost)}` : ''}`} />
         )}
-        {job.technicianNote && <Info label="কারিগরের কাজ" value={job.technicianNote} />}
+        {job.technicianNote && <Info label={t('কারিগরের কাজ')} value={job.technicianNote} />}
         {!open && (
           <>
-            <Info label="মোট বিল" value={`৳${money(job.total)} (চার্জ ${money(job.serviceCharge)} + পার্টস ${money(job.partsTotal)})`} />
-            <Info label="ডেলিভারিতে পরিশোধ" value={`৳${money(job.deliveryPaid)}`} />
-            {job.due > 0 && <Info label="বাকি" value={`৳${money(job.due)}`} />}
-            {job.refunded > 0 && <Info label="ফেরত" value={`৳${money(job.refunded)}`} />}
+            <Info label={t('মোট বিল')} value={`৳${money(job.total)} (${t('চার্জ')} ${money(job.serviceCharge)} + ${t('পার্টস')} ${money(job.partsTotal)})`} />
+            <Info label={t('ডেলিভারিতে পরিশোধ')} value={`৳${money(job.deliveryPaid)}`} />
+            {job.due > 0 && <Info label={t('বাকি')} value={`৳${money(job.due)}`} />}
+            {job.refunded > 0 && <Info label={t('ফেরত')} value={`৳${money(job.refunded)}`} />}
           </>
         )}
       </div>
@@ -254,11 +255,11 @@ function JobDetail({ id, onClose, onChanged }: { id: number; onClose: () => void
                 </button>
               : <button key={s} style={{ background: STATUS[s].color, borderColor: STATUS[s].color }}
                   onClick={() => run(() => api('POST', `/repairs/${job.id}/status`, { status: s }))}>
-                  {STATUS[s].label} — {STATUS[s].bn}
+                  {STATUS[s].label} — {t(STATUS[s].bn)}
                 </button>
           ))}
           {job.status === 'out_work' && (
-            <button className="ghost" onClick={() => setMode('out_work')}>কারিগর/মজুরি বদলান</button>
+            <button className="ghost" onClick={() => setMode('out_work')}>{t('কারিগর/মজুরি বদলান')}</button>
           )}
           {(job.status === 'success' || job.status === 'failed') && (
             <button style={{ background: STATUS.delivered.color, borderColor: STATUS.delivered.color }} onClick={() => setMode('deliver')}>
@@ -274,12 +275,12 @@ function JobDetail({ id, onClose, onChanged }: { id: number; onClose: () => void
           onSubmit={(body) => run(() => api('POST', `/repairs/${job.id}/deliver`, body))} />
       )}
 
-      <h4>পার্টস</h4>
+      <h4>{t('পার্টস')}</h4>
       <table>
         <tbody>
           {job.parts.map((p) => (
             <tr key={p.id}>
-              <td>{p.productName}{p.restocked && <span className="badge">স্টকে ফেরত</span>}</td>
+              <td>{p.productName}{p.restocked && <span className="badge">{t('স্টকে ফেরত')}</span>}</td>
               <td className="num">{p.qty} × {money(p.unitPrice)}</td>
               <td className="num">{money(p.lineTotal)}</td>
               <td>{editable && (
@@ -289,12 +290,12 @@ function JobDetail({ id, onClose, onChanged }: { id: number; onClose: () => void
               )}</td>
             </tr>
           ))}
-          {job.parts.length === 0 && <tr><td className="muted">কোনো পার্টস ব্যবহার হয়নি।</td></tr>}
+          {job.parts.length === 0 && <tr><td className="muted">{t('কোনো পার্টস ব্যবহার হয়নি।')}</td></tr>}
         </tbody>
       </table>
       {editable && <AddPart onAdd={(productId, qty) => run(() => api('POST', `/repairs/${job.id}/parts`, { productId, qty }))} />}
 
-      <h4>ইতিহাস</h4>
+      <h4>{t('ইতিহাস')}</h4>
       <ul className="timeline">
         {job.events.map((e, i) => (
           <li key={i}>
@@ -318,21 +319,21 @@ function OutWorkForm({ job, onSubmit }: { job: RepairDetail; onSubmit: (body: ob
   const [techId, setTechId] = useState(job.technicianId ? String(job.technicianId) : '');
   const [cost, setCost] = useState(job.technicianCost ? String(job.technicianCost) : '');
   const [note, setNote] = useState(job.technicianNote ?? job.problem);
-  useEffect(() => { api<Technician[]>('GET', '/technicians').then((t) => setTechs(t.filter((x) => x.active))); }, []);
+  useEffect(() => { api<Technician[]>('GET', '/technicians').then((tech) => setTechs(tech.filter((x) => x.active))); }, []);
 
   return (
     <div className="sub-form">
-      <h4>কারিগরের কাছে পাঠান (Out Work)</h4>
-      {techs.length === 0 && <p className="muted">আগে "কারিগর" পেজ থেকে কারিগর যোগ করুন।</p>}
+      <h4>{t('কারিগরের কাছে পাঠান (Out Work)')}</h4>
+      {techs.length === 0 && <p className="muted">{t('আগে “কারিগর” পেজ থেকে কারিগর যোগ করুন।')}</p>}
       <div className="form-grid">
-        <label>কারিগর *
+        <label>{t('কারিগর *')}
           <select value={techId} onChange={(e) => setTechId(e.target.value)}>
-            <option value="">নির্বাচন করুন…</option>
-            {techs.map((t) => <option key={t.id} value={t.id}>{t.name}{t.specialties ? ` (${t.specialties})` : ''}</option>)}
+            <option value="">{t('নির্বাচন করুন…')}</option>
+            {techs.map((tech) => <option key={tech.id} value={tech.id}>{tech.name}{tech.specialties ? ` (${tech.specialties})` : ''}</option>)}
           </select>
         </label>
-        <label>মজুরি<input type="number" min="0" value={cost} onChange={(e) => setCost(e.target.value)} /></label>
-        <label className="span-2">কী কাজ করতে হবে *<input value={note} onChange={(e) => setNote(e.target.value)} /></label>
+        <label>{t('মজুরি')}<input type="number" min="0" value={cost} onChange={(e) => setCost(e.target.value)} /></label>
+        <label className="span-2">{t('কী কাজ করতে হবে *')}<input value={note} onChange={(e) => setNote(e.target.value)} /></label>
       </div>
       <button className="primary" onClick={() => onSubmit({ status: 'out_work', technicianId: Number(techId), technicianCost: Number(cost) || 0, note })}>
         পাঠান
@@ -360,33 +361,33 @@ function DeliverForm({ job, partsTotal, accounts, onSubmit }: {
 
   return (
     <div className="sub-form">
-      <h4>ডেলিভারি ও বিল {failed && <span className="badge danger">Unsuccess</span>}</h4>
+      <h4>{t('ডেলিভারি ও বিল')} {failed && <span className="badge danger">Unsuccess</span>}</h4>
       <div className="form-grid">
-        <label>সার্ভিস চার্জ<input type="number" min="0" value={charge} onChange={(e) => setCharge(e.target.value)} /></label>
+        <label>{t('সার্ভিস চার্জ')}<input type="number" min="0" value={charge} onChange={(e) => setCharge(e.target.value)} /></label>
         {net >= 0
-          ? <label>এখন পরিশোধ<input type="number" min="0" value={paid === '' ? String(Math.max(0, net)) : paid} onChange={(e) => setPaid(e.target.value)} /></label>
-          : <div className="info"><span>অগ্রিম ফেরত দিতে হবে</span><b>৳{money(-net)}</b></div>}
-        <label>{net >= 0 ? 'টাকা জমা হবে' : 'ফেরত দেওয়া হবে'}
+          ? <label>{t('এখন পরিশোধ')}<input type="number" min="0" value={paid === '' ? String(Math.max(0, net)) : paid} onChange={(e) => setPaid(e.target.value)} /></label>
+          : <div className="info"><span>{t('অগ্রিম ফেরত দিতে হবে')}</span><b>৳{money(-net)}</b></div>}
+        <label>{net >= 0 ? t('টাকা জমা হবে') : t('ফেরত দেওয়া হবে')}
           <select value={account} onChange={(e) => setAccountId(e.target.value)}>
             {accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
           </select>
         </label>
         {failed && job.parts.length > 0 && (
-          <label className="check"><input type="checkbox" checked={restock} onChange={(e) => setRestock(e.target.checked)} /> পার্টস স্টকে ফেরত দিন</label>
+          <label className="check"><input type="checkbox" checked={restock} onChange={(e) => setRestock(e.target.checked)} /> {t('পার্টস স্টকে ফেরত দিন')}</label>
         )}
       </div>
       <div className="totals">
-        <div><span>পার্টস</span><span>{money(parts)}</span></div>
-        <div><span>অগ্রিম</span><span>-{money(job.advance)}</span></div>
-        <div className="grand"><span>মোট বিল</span><span>৳{money(total)}</span></div>
-        {net >= 0 && <div><span>বাকি থাকবে</span><span>{money(Math.max(0, net - paidValue))}</span></div>}
+        <div><span>{t('পার্টস')}</span><span>{money(parts)}</span></div>
+        <div><span>{t('অগ্রিম')}</span><span>-{money(job.advance)}</span></div>
+        <div className="grand"><span>{t('মোট বিল')}</span><span>৳{money(total)}</span></div>
+        {net >= 0 && <div><span>{t('বাকি থাকবে')}</span><span>{money(Math.max(0, net - paidValue))}</span></div>}
       </div>
       <button className="primary" onClick={() => onSubmit({
         charge: Number(charge) || 0,
         paid: net >= 0 ? paidValue : 0,
         accountId: Number(account) || null,
         restockParts: restock,
-      })}>ডেলিভারি সম্পন্ন</button>
+      })}>{t('ডেলিভারি সম্পন্ন')}</button>
     </div>
   );
 }
@@ -399,11 +400,11 @@ function AddPart({ onAdd }: { onAdd: (productId: number, qty: number) => void })
   return (
     <div className="inline">
       <select value={pid} onChange={(e) => setPid(e.target.value)}>
-        <option value="">পার্টস যোগ করুন…</option>
-        {products.map((p) => <option key={p.id} value={p.id}>{p.name} — ৳{money(p.salePrice)} (স্টক {p.stock})</option>)}
+        <option value="">{t('পার্টস যোগ করুন…')}</option>
+        {products.map((p) => <option key={p.id} value={p.id}>{p.name} {t('— ৳')}{money(p.salePrice)} {t('(স্টক')} {p.stock})</option>)}
       </select>
       <input type="number" min="1" value={qty} onChange={(e) => setQty(e.target.value)} style={{ width: 70 }} />
-      <button disabled={!pid} onClick={() => { onAdd(Number(pid), Number(qty) || 1); setPid(''); setQty('1'); }}>যোগ</button>
+      <button disabled={!pid} onClick={() => { onAdd(Number(pid), Number(qty) || 1); setPid(''); setQty('1'); }}>{t('যোগ')}</button>
     </div>
   );
 }

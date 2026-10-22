@@ -14,7 +14,7 @@ export function bootstrap(db) {
     db.prepare("INSERT INTO accounts (name, account_type) VALUES ('Cash Drawer', 'cash'), ('Bank', 'bank'), ('Mobile Wallet', 'mobile_wallet')").run();
   }
   if (!db.prepare('SELECT 1 FROM categories').get()) {
-    db.prepare("INSERT INTO categories (name, emoji) VALUES ('Mobile Phone', '📱'), ('Accessories', '🎧'), ('Service', '🛠️')").run();
+    db.prepare("INSERT INTO categories (name, emoji) VALUES ('Mobile Phone', '📱'), ('Spare Parts', '🔧'), ('Accessories', '🎧'), ('Service', '🛠️')").run();
   }
   if (!db.prepare('SELECT 1 FROM customers').get()) {
     db.prepare("INSERT INTO customers (name, customer_type) VALUES ('Walk-in Customer', 'retail')").run();

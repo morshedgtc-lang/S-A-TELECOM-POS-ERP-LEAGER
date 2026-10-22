@@ -3,6 +3,7 @@ import { api, money } from '../api';
 import { useAuth } from '../auth';
 import { STATUS } from '../labels';
 import type { Dashboard as DashboardData } from '../types';
+import { t } from '../i18n';
 
 const ACCOUNT_ICON = { cash: 'fa-money-bill', bank: 'fa-building-columns', mobile_wallet: 'fa-mobile-screen' };
 
@@ -35,7 +36,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (page: string) =
           ))}
           <div>
             <span><i className="fa-solid fa-chart-line" /> Today (sales + service)</span>
-            <span>+৳ {money(data.today.salesTotal + r.deliveredToday.total)}</span>
+            <span>{t('+৳')} {money(data.today.salesTotal + r.deliveredToday.total)}</span>
           </div>
         </div>
       </div>
@@ -50,44 +51,44 @@ export default function Dashboard({ onNavigate }: { onNavigate: (page: string) =
               <span>৳ {money(r.byStatus[s].estimated)}</span>
             </div>
           ))}
-          <div><span><i className="fa-solid fa-hand-holding-dollar" /> অগ্রিম জমা</span><span>৳ {money(r.advanceHeld)}</span></div>
+          <div><span><i className="fa-solid fa-hand-holding-dollar" /> {t('অগ্রিম জমা')}</span><span>৳ {money(r.advanceHeld)}</span></div>
         </div>
       </div>
 
       <div className="hero hero-blue">
         <div className="hero-title spread">
           <span><i className="fa-solid fa-list-check" /> SERVICE / SALE TRACK</span>
-          <button className="link-btn" onClick={() => onNavigate('repairs')}>বিস্তারিত <i className="fa-solid fa-arrow-right" /></button>
+          <button className="link-btn" onClick={() => onNavigate('repairs')}>{t('বিস্তারিত')} <i className="fa-solid fa-arrow-right" /></button>
         </div>
         <div className="tiles">
           <Tile value={String(r.byStatus.in_work.count)} label="In Work" dot={STATUS.in_work.color} />
           <Tile value={String(r.byStatus.out_work.count)} label="Out Work" dot={STATUS.out_work.color} />
           <Tile value={String(r.byStatus.success.count + r.byStatus.failed.count)} label="Ready (Success/Unsuccess)" dot={STATUS.success.color} />
-          <Tile value={String(r.deliveredToday.count)} label="আজ Delivered" dot={STATUS.delivered.color} />
+          <Tile value={String(r.deliveredToday.count)} label={t('আজ Delivered')} dot={STATUS.delivered.color} />
         </div>
       </div>
 
       <div className="hero hero-purple">
         <div className="hero-title spread">
           <span><i className="fa-solid fa-screwdriver-wrench" /> OUT-WORK</span>
-          <button className="link-btn" onClick={() => onNavigate('technicians')}>ম্যানেজ <i className="fa-solid fa-arrow-right" /></button>
+          <button className="link-btn" onClick={() => onNavigate('technicians')}>{t('ম্যানেজ')} <i className="fa-solid fa-arrow-right" /></button>
         </div>
         <div className="tiles">
-          <Tile value={String(r.technicians)} label="কারিগর" />
-          <Tile value={String(r.byStatus.out_work.count)} label="চলমান" />
-          <Tile value={`৳${money(r.technicianPayable)}`} label="বকেয়া" />
+          <Tile value={String(r.technicians)} label={t('কারিগর')} />
+          <Tile value={String(r.byStatus.out_work.count)} label={t('চলমান')} />
+          <Tile value={`৳${money(r.technicianPayable)}`} label={t('বকেয়া')} />
         </div>
       </div>
 
       <div className="hero hero-teal">
-        <div className="hero-title"><i className="fa-solid fa-cash-register" /> আজকের বিক্রয়</div>
+        <div className="hero-title"><i className="fa-solid fa-cash-register" /> {t('আজকের বিক্রয়')}</div>
         <div className="tiles">
-          <Tile value={String(data.today.salesCount)} label="ইনভয়েস" />
-          <Tile value={`৳${money(data.today.salesTotal)}`} label="বিক্রয়" />
-          <Tile value={`৳${money(data.today.salesDue)}`} label="বাকি" />
-          <Tile value={`৳${money(data.today.expenses)}`} label="খরচ" />
+          <Tile value={String(data.today.salesCount)} label={t('ইনভয়েস')} />
+          <Tile value={`৳${money(data.today.salesTotal)}`} label={t('বিক্রয়')} />
+          <Tile value={`৳${money(data.today.salesDue)}`} label={t('বাকি')} />
+          <Tile value={`৳${money(data.today.expenses)}`} label={t('খরচ')} />
           {can('viewProfit') && data.today.grossProfit !== undefined && (
-            <Tile value={`৳${money(data.today.grossProfit)}`} label="আজকের নিট লাভ" />
+            <Tile value={`৳${money(data.today.grossProfit)}`} label={t('আজকের নিট লাভ')} />
           )}
         </div>
       </div>
@@ -95,15 +96,15 @@ export default function Dashboard({ onNavigate }: { onNavigate: (page: string) =
       <div className="two-col">
         <div className="card plain-card">
           <div>
-            <div className="plain-title">পার্টি খাতা</div>
-            <div className="plain-amount">পাবো ৳ {money(data.receivable)}</div>
-            <div className="muted">দেবো (সাপ্লায়ার) ৳ {money(data.payable)}</div>
+            <div className="plain-title">{t('পার্টি খাতা')}</div>
+            <div className="plain-amount">{t('পাবো ৳')} {money(data.receivable)}</div>
+            <div className="muted">{t('দেবো (সাপ্লায়ার) ৳')} {money(data.payable)}</div>
           </div>
           <i className="fa-solid fa-scale-balanced plain-icon" />
         </div>
         <div className="card">
-          <h3>স্টক কম ({data.lowStock.length})</h3>
-          {data.lowStock.length === 0 ? <p className="muted">সব পণ্যের স্টক ঠিক আছে।</p> : (
+          <h3>{t('স্টক কম (')}{data.lowStock.length})</h3>
+          {data.lowStock.length === 0 ? <p className="muted">{t('সব পণ্যের স্টক ঠিক আছে।')}</p> : (
             <table>
               <tbody>
                 {data.lowStock.map((p) => (

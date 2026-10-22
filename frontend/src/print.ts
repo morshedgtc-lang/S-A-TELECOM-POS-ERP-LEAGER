@@ -1,4 +1,5 @@
 import { money } from './api';
+import { t } from './i18n';
 import { fmtDate, STATUS } from './labels';
 import type { RepairDetail, SaleDetail, ShopSettings } from './types';
 
@@ -25,7 +26,7 @@ const BASE_CSS = `
 function header(s: ShopSettings) {
   return `<h1>${esc(s.shopName)}</h1>
     ${s.shopAddress ? `<div class="c muted">${esc(s.shopAddress)}</div>` : ''}
-    ${s.shopPhone ? `<div class="c muted">মোবাইল: ${esc(s.shopPhone)}</div>` : ''}<hr>`;
+    ${s.shopPhone ? `<div class="c muted">${t('মোবাইল')}: ${esc(s.shopPhone)}</div>` : ''}<hr>`;
 }
 
 function open(title: string, body: string) {
@@ -49,16 +50,16 @@ export function printSaleInvoice(sale: SaleDetail, shop: ShopSettings) {
     ${row(`${i.qty} × ${money(i.unitPrice)}`, money(i.lineTotal))}`).join('');
 
   open(sale.invoiceNo, `${header(shop)}
-    <div class="c b">বিক্রয় ইনভয়েস</div>
-    <table>${row('ইনভয়েস', esc(sale.invoiceNo))}${row('তারিখ', esc(fmtDate(sale.createdAt)))}
-      ${row('কাস্টমার', esc(sale.customerName))}${row('বিক্রেতা', esc(sale.createdBy))}</table><hr>
+    <div class="c b">${t('বিক্রয় ইনভয়েস')}</div>
+    <table>${row(t('ইনভয়েস'), esc(sale.invoiceNo))}${row(t('তারিখ'), esc(fmtDate(sale.createdAt)))}
+      ${row(t('কাস্টমার'), esc(sale.customerName))}${row(t('বিক্রেতা'), esc(sale.createdBy))}</table><hr>
     <table>${items}</table><hr>
     <table>
-      ${row('সাবটোটাল', money(sale.subtotal))}
-      ${sale.discount ? row('ডিসকাউন্ট', `-${money(sale.discount)}`) : ''}
-      ${row('মোট', `৳ ${money(sale.total)}`, 'big')}
-      ${row('পরিশোধ', money(sale.paid))}
-      ${sale.due ? row('বাকি', money(sale.due), 'b') : ''}
+      ${row(t('সাবটোটাল'), money(sale.subtotal))}
+      ${sale.discount ? row(t('ডিসকাউন্ট'), `-${money(sale.discount)}`) : ''}
+      ${row(t('মোট'), `৳ ${money(sale.total)}`, 'big')}
+      ${row(t('পরিশোধ'), money(sale.paid))}
+      ${sale.due ? row(t('বাকি'), money(sale.due), 'b') : ''}
     </table><hr>
     <div class="c">${esc(shop.invoiceFooter)}</div>`);
 }
@@ -67,32 +68,32 @@ export function printJobCard(job: RepairDetail, shop: ShopSettings) {
   const delivered = job.status === 'delivered';
   const parts = job.parts.filter((p) => !p.restocked);
   open(job.jobNo, `${header(shop)}
-    <div class="c b">সার্ভিস জব কার্ড</div>
+    <div class="c b">${t('সার্ভিস জব কার্ড')}</div>
     <div class="c big">${esc(job.jobNo)}</div>
     <table>
-      ${row('তারিখ', esc(fmtDate(job.createdAt)))}
-      ${row('কাস্টমার', esc(job.customerName))}
-      ${job.customerMobile ? row('মোবাইল', esc(job.customerMobile)) : ''}
+      ${row(t('তারিখ'), esc(fmtDate(job.createdAt)))}
+      ${row(t('কাস্টমার'), esc(job.customerName))}
+      ${job.customerMobile ? row(t('মোবাইল'), esc(job.customerMobile)) : ''}
     </table><hr>
     <table>
-      ${row('ডিভাইস', esc(job.device))}
+      ${row(t('ডিভাইস'), esc(job.device))}
       ${job.imei ? row('IMEI', esc(job.imei)) : ''}
-      <tr><td colspan="2"><span class="b">সমস্যা:</span> ${esc(job.problem)}</td></tr>
-      ${job.accessories ? `<tr><td colspan="2"><span class="b">সাথে দেওয়া:</span> ${esc(job.accessories)}</td></tr>` : ''}
-      ${job.promisedAt ? row('ডেলিভারির তারিখ', esc(fmtDate(job.promisedAt, false))) : ''}
-      ${row('স্ট্যাটাস', esc(STATUS[job.status].label))}
+      <tr><td colspan="2"><span class="b">${t('সমস্যা:')}</span> ${esc(job.problem)}</td></tr>
+      ${job.accessories ? `<tr><td colspan="2"><span class="b">${t('সাথে দেওয়া:')}</span> ${esc(job.accessories)}</td></tr>` : ''}
+      ${job.promisedAt ? row(t('ডেলিভারির তারিখ'), esc(fmtDate(job.promisedAt, false))) : ''}
+      ${row(t('স্ট্যাটাস'), esc(STATUS[job.status].label))}
     </table><hr>
     <table>
-      ${delivered ? '' : row('আনুমানিক খরচ', money(job.estimatedCost))}
+      ${delivered ? '' : row(t('আনুমানিক খরচ'), money(job.estimatedCost))}
       ${parts.map((p) => row(`${esc(p.productName)} × ${p.qty}`, money(p.lineTotal))).join('')}
-      ${delivered ? row('সার্ভিস চার্জ', money(job.serviceCharge)) : ''}
-      ${delivered ? row('মোট বিল', `৳ ${money(job.total)}`, 'big') : ''}
-      ${row('অগ্রিম', money(job.advance))}
-      ${delivered && job.deliveryPaid ? row('ডেলিভারিতে পরিশোধ', money(job.deliveryPaid)) : ''}
-      ${delivered && job.due ? row('বাকি', money(job.due), 'b') : ''}
-      ${delivered && job.refunded ? row('ফেরত', money(job.refunded), 'b') : ''}
+      ${delivered ? row(t('সার্ভিস চার্জ'), money(job.serviceCharge)) : ''}
+      ${delivered ? row(t('মোট বিল'), `৳ ${money(job.total)}`, 'big') : ''}
+      ${row(t('অগ্রিম'), money(job.advance))}
+      ${delivered && job.deliveryPaid ? row(t('ডেলিভারিতে পরিশোধ'), money(job.deliveryPaid)) : ''}
+      ${delivered && job.due ? row(t('বাকি'), money(job.due), 'b') : ''}
+      ${delivered && job.refunded ? row(t('ফেরত'), money(job.refunded), 'b') : ''}
     </table><hr>
     ${shop.repairTerms ? `<div class="muted">${esc(shop.repairTerms)}</div><hr>` : ''}
-    <div class="sign"><span>কাস্টমার স্বাক্ষর</span><span>দোকানের স্বাক্ষর</span></div>
+    <div class="sign"><span>${t('কাস্টমার স্বাক্ষর')}</span><span>${t('দোকানের স্বাক্ষর')}</span></div>
     <div class="c muted" style="margin-top:8px">${esc(shop.invoiceFooter)}</div>`);
 }
