@@ -272,7 +272,16 @@ function JobDetail({ id, onClose, onChanged }: { id: number; onClose: () => void
       {mode === 'out_work' && <OutWorkForm job={job} onSubmit={(body) => run(() => api('POST', `/repairs/${job.id}/status`, body))} />}
       {mode === 'deliver' && (
         <DeliverForm job={job} partsTotal={partsTotal} accounts={accounts}
-          onSubmit={(body) => run(() => api('POST', `/repairs/${job.id}/deliver`, body))} />
+          onSubmit={(body) => run(async () => {
+            try {
+              return await api('POST', `/repairs/${job.id}/deliver`, body);
+            } catch (err) {
+              // Over the dealer's credit limit: a manager or above may approve it.
+              if (!(err instanceof Error && /Credit limit/.test(err.message) && can('manageParties')
+                && window.confirm(`${err.message}\n\n${t('তবুও বাকিতে ডেলিভারি দেবেন?')}`))) throw err;
+              return api('POST', `/repairs/${job.id}/deliver`, { ...body, allowOverLimit: true });
+            }
+          })} />
       )}
 
       <h4>{t('পার্টস')}</h4>
@@ -350,7 +359,10 @@ function DeliverForm({ job, partsTotal, accounts, onSubmit }: {
 }) {
   const failed = job.status === 'failed';
   const [restock, setRestock] = useState(failed);
-  const [charge, setCharge] = useState(String(failed ? 0 : Math.max(0, job.estimatedCost - partsTotal)));
+  // Dealers get their agreed discount on the service charge (the user can still change it).
+  const dealerPct = job.customerType === 'wholesaler' ? job.dealerDiscount : 0;
+  const baseCharge = Math.max(0, job.estimatedCost - partsTotal);
+  const [charge, setCharge] = useState(String(failed ? 0 : Math.round(baseCharge * (1 - dealerPct / 100))));
   const [accountId, setAccountId] = useState('');
   const parts = restock ? 0 : partsTotal;
   const total = (Number(charge) || 0) + parts;
@@ -362,6 +374,9 @@ function DeliverForm({ job, partsTotal, accounts, onSubmit }: {
   return (
     <div className="sub-form">
       <h4>{t('ডেলিভারি ও বিল')} {failed && <span className="badge danger">Unsuccess</span>}</h4>
+      {dealerPct > 0 && !failed && (
+        <p className="dealer-note"><i className="fa-solid fa-store" /> {t('ডিলার ছাড় {pct}% ধরা হয়েছে (মূল চার্জ ৳{base})', { pct: dealerPct, base: money(baseCharge) })}</p>
+      )}
       <div className="form-grid">
         <label>{t('সার্ভিস চার্জ')}<input type="number" min="0" value={charge} onChange={(e) => setCharge(e.target.value)} /></label>
         {net >= 0

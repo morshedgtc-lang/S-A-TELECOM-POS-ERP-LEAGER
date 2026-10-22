@@ -3,6 +3,7 @@ import { hasPerm, requirePerm } from '../lib/auth.js';
 import { tx } from '../lib/db.js';
 import { audit, dateClauses, httpError, invoiceNo, round2, toMoney, toPositiveInt } from '../lib/http.js';
 import { moveMoney } from '../lib/ledger.js';
+import { allocateDue, assertCreditLimit } from '../lib/dues.js';
 
 const SALE_LIST = `
   SELECT s.*, c.name AS customer_name, u.name AS created_by_name
@@ -104,7 +105,10 @@ function createReturn(db, saleId, body, user) {
       }
       db.prepare('UPDATE products SET stock = stock + ? WHERE id = ?').run(l.qty, l.item.product_id);
     }
-    if (credited > 0) db.prepare('UPDATE customers SET balance = ? WHERE id = ?').run(round2(customer.balance - credited), customer.id);
+    if (credited > 0) {
+      db.prepare('UPDATE customers SET balance = ? WHERE id = ?').run(round2(customer.balance - credited), customer.id);
+      allocateDue(db, { customerId: customer.id, amount: credited, sourceType: 'return', sourceId: returnId, prefer: { docType: 'sale', docId: sale.id } });
+    }
     if (refunded > 0) {
       moveMoney(db, { accountId, direction: 'out', amount: refunded, refType: 'sale_return', refId: returnId, userId: user.id });
     }
@@ -183,9 +187,9 @@ export function salesRouter(db) {
     const discount = toMoney(body.discount, 'Discount');
     if (discount > 0 && !hasPerm(req.user, 'giveDiscount')) throw httpError(403, 'Permission denied: giveDiscount');
     const customerId = body.customerId ? Number(body.customerId) : null;
-    if (customerId && !db.prepare('SELECT 1 FROM customers WHERE id = ?').get(customerId)) {
-      throw httpError(400, 'Customer not found');
-    }
+    const customer = customerId ? db.prepare('SELECT * FROM customers WHERE id = ?').get(customerId) : null;
+    if (customerId && !customer) throw httpError(400, 'Customer not found');
+    const isDealer = customer?.customer_type === 'wholesaler';
     const paid = toMoney(body.paid, 'Paid');
     const accountId = body.accountId ? Number(body.accountId) : null;
 
@@ -193,8 +197,10 @@ export function salesRouter(db) {
       const qty = toPositiveInt(it.qty, 'Quantity');
       const product = db.prepare('SELECT * FROM products WHERE id = ? AND active = 1').get(Number(it.productId) || 0);
       if (!product) throw httpError(400, `Product ${it.productId} not found`);
-      const unitPrice = it.unitPrice === undefined ? product.sale_price : toMoney(it.unitPrice, 'Unit price');
-      if (unitPrice !== product.sale_price && !hasPerm(req.user, 'editPrice')) {
+      // Dealers (wholesale customers) get the product's dealer price when one is set.
+      const listPrice = isDealer && product.dealer_price != null ? product.dealer_price : product.sale_price;
+      const unitPrice = it.unitPrice === undefined ? listPrice : toMoney(it.unitPrice, 'Unit price');
+      if (unitPrice !== listPrice && !hasPerm(req.user, 'editPrice')) {
         throw httpError(403, 'Permission denied: editPrice');
       }
       let serials = [];
@@ -220,6 +226,7 @@ export function salesRouter(db) {
     const due = round2(total - paid);
     if (paid > 0 && !accountId) throw httpError(400, 'Choose the account that received the payment');
     if (due > 0 && !customerId) throw httpError(400, 'Walk-in sales must be paid in full');
+    assertCreditLimit(db, customerId, due, req.user, Boolean(body.allowOverLimit));
 
     const saleId = tx(db, () => {
       const sale = db.prepare(`INSERT INTO sales (invoice_no, customer_id, subtotal, discount, total, paid, due, note, created_by)

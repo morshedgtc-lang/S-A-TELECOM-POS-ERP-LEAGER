@@ -69,6 +69,7 @@ cd frontend && npm run build
 | IMEI / serial stock and IMEI lookup | yes | yes |
 | Purchases | yes | yes |
 | Customers & suppliers, settlements | yes | yes |
+| Dealers: dues list, statement, collect against bills, dealer price, credit limit, WhatsApp reminder | yes | yes |
 | Expenses | yes | yes |
 | Profit & loss and daily cash book | yes | yes |
 | Shop settings and staff | yes | yes |

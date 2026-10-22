@@ -22,7 +22,8 @@ A shop system for a mobile phone repair and sales business: repairs, spare parts
 | Purchasing | New purchase | Stock in from suppliers, IMEI units, supplier due |
 | Products | Products & stock | Categories (Mobile Phone, Spare Parts, Accessories, Service), brands, prices, low-stock alert |
 | | IMEI lookup | Where a phone came from, who bought it, repair history |
-| Parties & ledgers | Customers & suppliers | Balances, collect due, pay supplier |
+| Parties & ledgers | Customers & suppliers | Balances, dealer settings (credit limit, discount), statement, WhatsApp reminder, collect against bills, pay supplier |
+| | Dues collection | Everyone who owes, days overdue, over-limit flag, collect, statement, reminder |
 | Money & accounts | Expenses | Expense book by category |
 | | Profit & reports | Profit & loss, cash book by account and type |
 | Owner & admin | Website & banner | Edit the public home page (Bangla + English), upload the banner |

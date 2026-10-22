@@ -13,7 +13,8 @@ export function moveMoney(db, { accountId, direction, amount, refType, refId = n
   }
   const delta = direction === 'in' ? value : -value;
   db.prepare('UPDATE accounts SET balance = ? WHERE id = ?').run(round2(account.balance + delta), accountId);
-  db.prepare(`INSERT INTO payments (account_id, direction, amount, ref_type, ref_id, note, created_by)
+  const r = db.prepare(`INSERT INTO payments (account_id, direction, amount, ref_type, ref_id, note, created_by)
               VALUES (?, ?, ?, ?, ?, ?, ?)`)
     .run(accountId, direction, value, refType, refId, note, userId);
+  return Number(r.lastInsertRowid);
 }

@@ -9,6 +9,7 @@ import { authRouter, changeOwnPassword, usersRouter } from './routes/auth.js';
 import { publicRouter, siteRouter } from './routes/public.js';
 import { catalogRouter, productsRouter } from './routes/catalog.js';
 import { customersRouter, suppliersRouter } from './routes/parties.js';
+import { dealersRouter } from './routes/dealers.js';
 import { salesRouter } from './routes/sales.js';
 import { purchasesRouter } from './routes/purchases.js';
 import { accountsRouter, auditRouter, dashboardRouter, expensesRouter } from './routes/finance.js';
@@ -43,6 +44,7 @@ export function createApp(db) {
   api.use('/users', usersRouter(db));
   api.use('/catalog', catalogRouter(db));
   api.use('/products', productsRouter(db));
+  api.use('/customers', dealersRouter(db));
   api.use('/customers', customersRouter(db));
   api.use('/suppliers', suppliersRouter(db));
   api.use('/sales', salesRouter(db));

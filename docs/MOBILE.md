@@ -31,7 +31,13 @@ For a signed release APK and a Play Store bundle (`.aab`), add these repository 
 
 ### Option B — on this PC
 
-Needs JDK 21 (installed) and the Android SDK (Android Studio installs it).
+Needs JDK 21 and the Android SDK (Android Studio installs it, or use the command-line tools). On this PC the SDK is in `%LOCALAPPDATA%\Android\Sdk`, and `frontend/android/local.properties` (not committed) points to it.
+
+Installing the SDK with only the command-line tools: unzip Google's `commandlinetools-win-*_latest.zip` to `Sdk\cmdline-tools\latest`, then use the new Android CLI (`sdkmanager` is deprecated and its `.bat` wrapper breaks on the `;` in package names):
+
+```bash
+android --sdk=%LOCALAPPDATA%\Android\Sdk sdk install "platform-tools" "platforms;android-36" "build-tools;35.0.0"
+```
 
 ```bash
 cd frontend

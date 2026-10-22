@@ -22,10 +22,11 @@ import Reports from './pages/Reports';
 import Imei from './pages/Imei';
 import Settings from './pages/Settings';
 import Website from './pages/Website';
+import Dues from './pages/Dues';
 
 type PageId =
   | 'dashboard' | 'repairs' | 'technicians' | 'pos' | 'sales' | 'purchases' | 'products' | 'imei'
-  | 'parties' | 'expenses' | 'reports' | 'website' | 'settings';
+  | 'parties' | 'dues' | 'expenses' | 'reports' | 'website' | 'settings';
 
 interface NavItem {
   id: PageId;
@@ -47,6 +48,7 @@ const NAV: NavItem[] = [
   { id: 'products', label: 'পণ্য তালিকা ও স্টক', icon: 'fa-boxes-stacked', section: 'পণ্য ব্যবস্থাপনা' },
   { id: 'imei', label: 'IMEI লুকআপ', icon: 'fa-mobile-screen-button', section: 'পণ্য ব্যবস্থাপনা' },
   { id: 'parties', label: 'কাস্টমার ও সাপ্লায়ার খাতা', icon: 'fa-users', section: 'পার্টি ও খাতা' },
+  { id: 'dues', label: 'বকেয়া আদায় তালিকা', icon: 'fa-hand-holding-dollar', section: 'পার্টি ও খাতা' },
   { id: 'expenses', label: 'খরচ খাতা', icon: 'fa-wallet', section: 'টাকা ও হিসাব', needs: ['manageExpenses'] },
   { id: 'reports', label: 'লাভ-ক্ষতি ও রিপোর্ট', icon: 'fa-chart-pie', section: 'টাকা ও হিসাব', needs: ['viewReports'] },
   { id: 'website', label: 'ওয়েবসাইট ও ব্যানার', icon: 'fa-globe', section: 'ওনার ও প্রশাসন', needs: ['manageSettings'] },
@@ -153,6 +155,7 @@ function Shell({ user, page }: { user: User; page: string }) {
           {current.id === 'imei' && <Imei />}
           {current.id === 'purchases' && <Purchases />}
           {current.id === 'parties' && <Parties />}
+          {current.id === 'dues' && <Dues />}
           {current.id === 'expenses' && <Expenses />}
           {current.id === 'reports' && <Reports />}
           {current.id === 'website' && <Website />}

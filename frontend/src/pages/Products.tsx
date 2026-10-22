@@ -47,7 +47,7 @@ export default function Products() {
         <table>
           <thead>
             <tr>
-              <th>{t('নাম')}</th><th>{t('ক্যাটাগরি')}</th><th className="num">{t('বিক্রয়মূল্য')}</th>
+              <th>{t('নাম')}</th><th>{t('ক্যাটাগরি')}</th><th className="num">{t('বিক্রয়মূল্য')}</th><th className="num">{t('ডিলার মূল্য')}</th>
               {can('viewCost') && <th className="num">{t('ক্রয়মূল্য')}</th>}
               <th className="num">{t('স্টক')}</th><th>{t('ধরন')}</th>
               {can('manageProducts') && <th />}
@@ -59,6 +59,7 @@ export default function Products() {
                 <td>{p.name}{p.isLowStock && <span className="badge warn">{t('কম')}</span>}</td>
                 <td>{p.categoryName ?? '—'}</td>
                 <td className="num">{money(p.salePrice)}</td>
+                <td className="num muted">{p.dealerPrice != null ? money(p.dealerPrice) : '—'}</td>
                 {can('viewCost') && <td className="num">{money(p.buyPrice)}</td>}
                 <td className="num">{p.stock}</td>
                 <td>{p.serialized ? t('IMEI / সিরিয়াল') : t('পরিমাণ')}</td>
@@ -67,7 +68,7 @@ export default function Products() {
                 )}
               </tr>
             ))}
-            {products.length === 0 && <tr><td colSpan={7} className="muted">{t('এখনো কোনো পণ্য নেই।')}</td></tr>}
+            {products.length === 0 && <tr><td colSpan={8} className="muted">{t('এখনো কোনো পণ্য নেই।')}</td></tr>}
           </tbody>
         </table>
       </div>
@@ -88,7 +89,7 @@ export default function Products() {
 
 function ProductForm({ categories, brands, onSaved }: { categories: Category[]; brands: Brand[]; onSaved: () => void }) {
   const [form, setForm] = useState({
-    name: '', sku: '', categoryId: '', brandId: '', buyPrice: '', salePrice: '', stock: '0', lowStockLimit: '5', serialized: false,
+    name: '', sku: '', categoryId: '', brandId: '', buyPrice: '', salePrice: '', dealerPrice: '', stock: '0', lowStockLimit: '5', serialized: false,
   });
   const [error, setError] = useState('');
   const set = (k: keyof typeof form) => (e: { target: { value: string } }) => setForm({ ...form, [k]: e.target.value });
@@ -103,12 +104,13 @@ function ProductForm({ categories, brands, onSaved }: { categories: Category[]; 
         categoryId: form.categoryId ? Number(form.categoryId) : null,
         brandId: form.brandId ? Number(form.brandId) : null,
         buyPrice: form.buyPrice || 0,
+        dealerPrice: form.dealerPrice === '' ? null : form.dealerPrice,
         salePrice: form.salePrice || 0,
         stock: form.serialized ? 0 : Number(form.stock),
         lowStockLimit: form.lowStockLimit,
         serialized: form.serialized,
       });
-      setForm({ ...form, name: '', sku: '', buyPrice: '', salePrice: '', stock: '0' });
+      setForm({ ...form, name: '', sku: '', buyPrice: '', salePrice: '', dealerPrice: '', stock: '0' });
       onSaved();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Save failed');
@@ -135,6 +137,7 @@ function ProductForm({ categories, brands, onSaved }: { categories: Category[]; 
       <div className="row">
         <label>{t('ক্রয়মূল্য')}<input type="number" min="0" value={form.buyPrice} onChange={set('buyPrice')} /></label>
         <label>{t('বিক্রয়মূল্য')}<input type="number" min="0" value={form.salePrice} onChange={set('salePrice')} /></label>
+        <label>{t('ডিলার মূল্য (ঐচ্ছিক)')}<input type="number" min="0" value={form.dealerPrice} onChange={set('dealerPrice')} /></label>
       </div>
       <div className="row">
         <label>{t('শুরুর স্টক')}<input type="number" min="0" disabled={form.serialized} value={form.stock} onChange={set('stock')} /></label>

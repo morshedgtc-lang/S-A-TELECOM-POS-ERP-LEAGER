@@ -49,6 +49,7 @@ function toProduct(row, withCost) {
     brandId: row.brand_id,
     brandName: row.brand_name,
     salePrice: row.sale_price,
+    dealerPrice: row.dealer_price ?? null,
     stock: row.stock,
     lowStockLimit: row.low_stock_limit,
     serialized: row.serialized === 1,
@@ -116,6 +117,9 @@ export function productsRouter(db) {
         toMoney(body.lowStockLimit, 'Low stock limit', 5),
         serialized ? 1 : 0,
       );
+    if (body.dealerPrice !== undefined && body.dealerPrice !== null && body.dealerPrice !== '') {
+      db.prepare('UPDATE products SET dealer_price = ? WHERE id = ?').run(toMoney(body.dealerPrice, 'Dealer price'), result.lastInsertRowid);
+    }
     audit(db, req.user, 'product_create', name, `id=${result.lastInsertRowid}`);
     res.status(201).json({ id: Number(result.lastInsertRowid) });
   });
@@ -140,6 +144,10 @@ export function productsRouter(db) {
         body.active === undefined ? row.active : (body.active ? 1 : 0),
         row.id,
       );
+    if (body.dealerPrice !== undefined) {
+      db.prepare('UPDATE products SET dealer_price = ? WHERE id = ?')
+        .run(body.dealerPrice === null || body.dealerPrice === '' ? null : toMoney(body.dealerPrice, 'Dealer price'), row.id);
+    }
     audit(db, req.user, 'product_update', row.name, `id=${row.id}`);
     res.json({ id: row.id });
   });

@@ -3,6 +3,7 @@ import { hasPerm, requirePerm } from '../lib/auth.js';
 import { tx } from '../lib/db.js';
 import { audit, httpError, invoiceNo, requireText, round2, toMoney, toPositiveInt } from '../lib/http.js';
 import { moveMoney } from '../lib/ledger.js';
+import { assertCreditLimit } from '../lib/dues.js';
 
 /** Allowed status moves, same rules as the legacy service tracker. Delivery goes through /deliver. */
 const FLOW = {
@@ -15,7 +16,8 @@ const FLOW = {
 export const REPAIR_STATUSES = Object.keys(FLOW);
 
 const JOB_SELECT = `
-  SELECT j.*, c.name AS customer_name, c.mobile AS customer_mobile, t.name AS technician_name
+  SELECT j.*, c.name AS customer_name, c.mobile AS customer_mobile, c.customer_type, c.dealer_discount,
+         t.name AS technician_name
   FROM repair_jobs j
   JOIN customers c ON c.id = j.customer_id
   LEFT JOIN technicians t ON t.id = j.technician_id`;
@@ -27,6 +29,8 @@ function toJob(r) {
     customerId: r.customer_id,
     customerName: r.customer_name,
     customerMobile: r.customer_mobile,
+    customerType: r.customer_type,
+    dealerDiscount: r.dealer_discount ?? 0,
     device: r.device,
     imei: r.imei,
     problem: r.problem,
@@ -307,6 +311,7 @@ export function repairsRouter(db) {
         if (paid > net) throw httpError(400, `Payment is more than the balance due (${net})`);
         if (paid > 0 && !accountId) throw httpError(400, 'Choose the account that received the payment');
         due = round2(net - paid);
+        assertCreditLimit(db, job.customer_id, due, req.user, Boolean(b.allowOverLimit));
         if (paid > 0) {
           moveMoney(db, { accountId, direction: 'in', amount: paid, refType: 'repair_payment', refId: job.id, userId: req.user.id });
         }

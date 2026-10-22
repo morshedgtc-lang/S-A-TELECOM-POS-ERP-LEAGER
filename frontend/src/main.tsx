@@ -11,6 +11,7 @@ import '@fontsource/hind-siliguri/700.css';
 import './styles.css';
 import './site.css';
 import './mobile.css';
+import './dealers.css';
 
 initNative();
 

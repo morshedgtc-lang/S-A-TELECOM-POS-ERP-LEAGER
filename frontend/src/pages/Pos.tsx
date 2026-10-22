@@ -21,6 +21,10 @@ export default function Pos() {
   const [cart, setCart] = useState<CartLine[]>([]);
   const [search, setSearch] = useState('');
   const [customerId, setCustomerId] = useState('');
+  const selectedCustomer = customers.find((c) => String(c.id) === customerId);
+  const isDealer = selectedCustomer?.customerType === 'wholesaler';
+  /** Dealers pay the dealer price when the product has one. */
+  const priceFor = (p: Product) => (isDealer && p.dealerPrice != null ? p.dealerPrice : p.salePrice);
   const [newCustomer, setNewCustomer] = useState<{ name: string; mobile: string } | null>(null);
   const [discount, setDiscount] = useState('');
   const [paid, setPaid] = useState('');
@@ -36,6 +40,11 @@ export default function Pos() {
     api<Party[]>('GET', '/customers').then(setCustomers);
     api<Account[]>('GET', '/accounts').then((a) => { setAccounts(a); if (a[0]) setAccountId(String(a[0].id)); });
   }, []);
+
+  // Switching between a dealer and a normal customer re-prices the cart.
+  useEffect(() => {
+    setCart((c) => c.map((l) => ({ ...l, unitPrice: priceFor(l.product) })));
+  }, [customerId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const matches = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -64,7 +73,7 @@ export default function Pos() {
           return prev;
         }
         if (i >= 0) return prev.map((l, j) => (j === i ? { ...l, qty: l.qty + 1, serials: [...l.serials, serial] } : l));
-        return [...prev, { product: p, qty: 1, unitPrice: p.salePrice, serials: [serial] }];
+        return [...prev, { product: p, qty: 1, unitPrice: priceFor(p), serials: [serial] }];
       }
       const inCart = i >= 0 ? prev[i].qty : 0;
       if (inCart + 1 > p.stock) {
@@ -72,7 +81,7 @@ export default function Pos() {
         return prev;
       }
       if (i >= 0) return prev.map((l, j) => (j === i ? { ...l, qty: l.qty + 1 } : l));
-      return [...prev, { product: p, qty: 1, unitPrice: p.salePrice, serials: [] }];
+      return [...prev, { product: p, qty: 1, unitPrice: priceFor(p), serials: [] }];
     });
   }
 
@@ -114,13 +123,22 @@ export default function Pos() {
         const c = await api<{ id: number }>('POST', '/customers', { name: newCustomer.name.trim(), mobile: newCustomer.mobile.trim() || null });
         custId = c.id;
       }
-      const sale = await api<SaleDetail>('POST', '/sales', {
+      const body = {
         customerId: custId,
         discount: Number(discount) || 0,
         paid: Math.min(paidValue, total),
         accountId: Number(accountId) || null,
         items: cart.map((l) => ({ productId: l.product.id, qty: l.qty, unitPrice: l.unitPrice, serials: l.serials })),
-      });
+      };
+      let sale: SaleDetail;
+      try {
+        sale = await api<SaleDetail>('POST', '/sales', body);
+      } catch (err) {
+        // Over the dealer's credit limit: a manager or above may approve it.
+        if (!(err instanceof Error && /Credit limit/.test(err.message) && can('manageParties')
+          && window.confirm(`${err.message}\n\n${t('তবুও বাকিতে বিক্রি করবেন?')}`))) throw err;
+        sale = await api<SaleDetail>('POST', '/sales', { ...body, allowOverLimit: true });
+      }
       if (autoPrint) printSaleInvoice(sale, await getShop());
       setMessage({ ok: true, text: `✅ ${t('{inv} সেভ হয়েছে — মোট ৳{total}', { inv: sale.invoiceNo, total: money(sale.total) })}${sale.due ? `, ${t('বাকি')} ৳${money(sale.due)}` : ''}` });
       setCart([]);
@@ -207,10 +225,20 @@ export default function Pos() {
             <div className="inline" style={{ margin: 0 }}>
               <select value={customerId} onChange={(e) => setCustomerId(e.target.value)} style={{ flex: 1 }}>
                 <option value="">{t('Walk-in (পুরো টাকা দিতে হবে)')}</option>
-                {customers.map((c) => <option key={c.id} value={c.id}>{c.name}{c.mobile ? ` · ${c.mobile}` : 't('}{c.balance > 0 ? ` (বাকি ${money(c.balance)})` : ')'}</option>)}
+                {customers.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}{c.mobile ? ` · ${c.mobile}` : ''}{c.customerType === 'wholesaler' ? ` [${t('ডিলার')}]` : ''}{c.balance > 0 ? ` (${t('বাকি')} ${money(c.balance)})` : ''}
+                  </option>
+                ))}
               </select>
               <button type="button" className="ghost" onClick={() => setNewCustomer({ name: '', mobile: '' })}><i className="fa-solid fa-user-plus" /></button>
             </div>
+            {isDealer && (
+              <small className="dealer-note">
+                <i className="fa-solid fa-store" /> {t('ডিলার মূল্য প্রযোজ্য')}
+                {(selectedCustomer?.creditLimit ?? 0) > 0 && <> · {t('লিমিট')} ৳{money(selectedCustomer?.creditLimit)} · {t('বাকি')} ৳{money(selectedCustomer?.balance)}</>}
+              </small>
+            )}
           </label>
         )}
 

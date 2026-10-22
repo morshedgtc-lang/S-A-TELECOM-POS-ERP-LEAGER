@@ -1,0 +1,55 @@
+/* Dealers, dues and statements */
+.age { display: inline-block; font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 10px; color: #fff; }
+.age.green { background: var(--green); color: #052e16; }
+.age.amber { background: var(--amber); color: #3b2300; }
+.age.red { background: var(--red); }
+.badge.dealer { background: color-mix(in srgb, var(--violet) 18%, transparent); color: var(--violet); }
+.danger-text { color: var(--red); }
+.dealer-note { display: block; margin-top: 4px; color: var(--violet); font-weight: 600; }
+.list-filter { width: 100%; margin-bottom: 8px; }
+tr.clickable { cursor: pointer; }
+tr.clickable:hover td { background: var(--soft); }
+button.small { padding: 6px 12px; font-size: 13px; }
+button.ghost.wa, .wa i { color: #16a34a; }
+
+.due-list { display: grid; gap: 10px; }
+.due-card {
+  display: flex; justify-content: space-between; gap: 12px; align-items: center;
+  background: var(--card); border: 1px solid var(--line); border-left: 6px solid var(--green); border-radius: 12px; padding: 12px 14px;
+}
+.due-card.over { border-left-color: var(--red); }
+.due-main { min-width: 0; display: grid; gap: 4px; }
+.due-name { font-weight: 800; font-size: 16px; }
+.due-side { text-align: right; display: grid; gap: 6px; justify-items: end; }
+.due-amount { font-size: 20px; font-weight: 900; color: var(--rose); }
+.due-actions { display: flex; gap: 4px; align-items: center; }
+.limit-bar { height: 6px; background: var(--soft); border-radius: 4px; overflow: hidden; max-width: 260px; }
+.limit-bar span { display: block; height: 100%; background: linear-gradient(90deg, var(--green), var(--amber), var(--red)); }
+
+.stat-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 10px; }
+.stat-strip > div { background: var(--soft); border-radius: 10px; padding: 8px 10px; display: grid; gap: 2px; }
+.stat-strip span { font-size: 12px; color: var(--muted); }
+.table-wrap { overflow-x: auto; }
+.kind { font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 10px; }
+.kind-sale { background: color-mix(in srgb, var(--sky) 18%, transparent); color: var(--sky); }
+.kind-repair { background: color-mix(in srgb, var(--violet) 18%, transparent); color: var(--violet); }
+.kind-collection { background: color-mix(in srgb, var(--green) 20%, transparent); color: #16a34a; }
+.kind-return { background: color-mix(in srgb, var(--amber) 20%, transparent); color: #b45309; }
+
+.bill-list { display: grid; gap: 6px; margin: 10px 0; max-height: 45vh; overflow-y: auto; }
+.bill {
+  display: grid; grid-template-columns: 1fr auto 110px; gap: 8px; align-items: center;
+  border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px;
+}
+.bill.on { border-color: var(--rose); background: color-mix(in srgb, var(--rose) 6%, transparent); }
+.bill label { margin: 0; }
+.bill .num { text-align: right; }
+.bill-amt { width: 110px; text-align: right; }
+
+@media (max-width: 768px) {
+  .stat-strip { grid-template-columns: repeat(2, 1fr); }
+  .due-card { flex-direction: column; align-items: stretch; }
+  .due-side { justify-items: start; text-align: left; grid-template-columns: 1fr auto; align-items: center; }
+  .bill { grid-template-columns: 1fr auto; }
+  .bill .num, .bill-amt { grid-column: 1 / -1; width: 100%; }
+}

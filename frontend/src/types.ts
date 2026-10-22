@@ -40,6 +40,7 @@ export interface Product {
   categoryId: number | null;
   categoryName: string | null;
   salePrice: number;
+  dealerPrice: number | null;
   buyPrice?: number;
   stock: number;
   lowStockLimit: number;
@@ -54,6 +55,42 @@ export interface Party {
   address: string | null;
   balance: number;
   customerType?: 'retail' | 'wholesaler';
+  creditLimit?: number;
+  dealerDiscount?: number;
+}
+
+export interface OpenBill {
+  docType: 'sale' | 'repair';
+  docId: number;
+  ref: string;
+  date: string;
+  due: number;
+  remaining: number;
+  days: number;
+}
+
+export interface DueRow {
+  id: number;
+  name: string;
+  mobile: string | null;
+  customerType: 'retail' | 'wholesaler';
+  balance: number;
+  creditLimit: number;
+  overLimit: boolean;
+  openBills: number;
+  oldestDays: number;
+}
+
+export interface Statement {
+  customer: { id: number; name: string; mobile: string | null; customerType: string; creditLimit: number; balance: number };
+  from: string | null;
+  to: string | null;
+  opening: number;
+  closing: number;
+  totalDebit: number;
+  totalCredit: number;
+  lines: { date: string; kind: 'sale' | 'repair' | 'collection' | 'return'; ref: string; note?: string; debit: number; credit: number; balance: number }[];
+  openBills: OpenBill[];
 }
 
 export interface Account {
@@ -123,6 +160,8 @@ export interface RepairJob {
   customerId: number;
   customerName: string;
   customerMobile: string | null;
+  customerType: 'retail' | 'wholesaler';
+  dealerDiscount: number;
   device: string;
   imei: string | null;
   problem: string;

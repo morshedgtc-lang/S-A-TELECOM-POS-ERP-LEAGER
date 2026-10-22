@@ -60,6 +60,7 @@ A `DataService` object with `API_CONFIG.mode = 'local' | 'api'` exists, but its 
 - 80 mm printing of sale invoices and repair job cards
 - Bengali UI and the legacy dashboard cards (total cash, hold amount, service track, out-work)
 - Shop settings and staff management
+- Dealers / wholesalers (other shops and technicians): dues list with days overdue, statement, collection against chosen bills, dealer price, credit limit, WhatsApp reminder
 
 ## Still to port (priority order)
 

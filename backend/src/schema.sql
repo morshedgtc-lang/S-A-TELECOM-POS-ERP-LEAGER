@@ -257,6 +257,20 @@ CREATE TABLE IF NOT EXISTS sale_return_items (
   serials      TEXT
 );
 
+-- Which bill (sale or delivered repair job) a collection or return credit settled.
+CREATE TABLE IF NOT EXISTS due_allocations (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  customer_id INTEGER NOT NULL REFERENCES customers(id),
+  doc_type    TEXT NOT NULL CHECK (doc_type IN ('sale', 'repair')),
+  doc_id      INTEGER NOT NULL,
+  amount      REAL NOT NULL CHECK (amount > 0),
+  source_type TEXT NOT NULL CHECK (source_type IN ('collection', 'return', 'backfill')),
+  source_id   INTEGER,                                  -- payments.id (collection) or sale_returns.id (return)
+  created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_due_alloc_doc ON due_allocations(doc_type, doc_id);
+CREATE INDEX IF NOT EXISTS idx_due_alloc_customer ON due_allocations(customer_id);
 CREATE INDEX IF NOT EXISTS idx_repair_jobs_status ON repair_jobs(status);
 CREATE INDEX IF NOT EXISTS idx_repair_jobs_imei ON repair_jobs(imei);
 CREATE INDEX IF NOT EXISTS idx_repair_jobs_customer ON repair_jobs(customer_id);

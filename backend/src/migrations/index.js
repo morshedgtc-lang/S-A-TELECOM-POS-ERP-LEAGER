@@ -1,3 +1,5 @@
+import { allocateDue } from '../lib/dues.js';
+
 /**
  * Versioned changes that schema.sql cannot express on an existing database
  * (SQLite cannot alter a CHECK constraint in place). Each runs once and is recorded.
@@ -30,6 +32,34 @@ const MIGRATIONS = [
         COMMIT;
         PRAGMA foreign_keys = ON;
       `);
+    },
+  },
+  {
+    id: '002_dealer_fields_and_allocations',
+    run(db) {
+      const cols = (table) => db.prepare(`PRAGMA table_info(${table})`).all().map((c) => c.name);
+      if (!cols('customers').includes('credit_limit')) {
+        db.exec('ALTER TABLE customers ADD COLUMN credit_limit REAL NOT NULL DEFAULT 0 CHECK (credit_limit >= 0)');
+      }
+      if (!cols('customers').includes('dealer_discount')) {
+        db.exec('ALTER TABLE customers ADD COLUMN dealer_discount REAL NOT NULL DEFAULT 0 CHECK (dealer_discount >= 0 AND dealer_discount <= 100)');
+      }
+      if (!cols('products').includes('dealer_price')) {
+        db.exec('ALTER TABLE products ADD COLUMN dealer_price REAL CHECK (dealer_price IS NULL OR dealer_price >= 0)');
+      }
+      // Earlier collections and return credits were not linked to bills: settle bills oldest-first.
+      db.exec('BEGIN');
+      try {
+        for (const c of db.prepare('SELECT id FROM customers').all()) {
+          const collected = db.prepare("SELECT COALESCE(SUM(amount), 0) AS v FROM payments WHERE ref_type = 'customer_collection' AND ref_id = ?").get(c.id).v;
+          const credited = db.prepare('SELECT COALESCE(SUM(r.credited), 0) AS v FROM sale_returns r JOIN sales s ON s.id = r.sale_id WHERE s.customer_id = ?').get(c.id).v;
+          if (collected + credited > 0) allocateDue(db, { customerId: c.id, amount: collected + credited, sourceType: 'backfill' });
+        }
+        db.exec('COMMIT');
+      } catch (err) {
+        db.exec('ROLLBACK');
+        throw err;
+      }
     },
   },
 ];

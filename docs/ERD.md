@@ -36,6 +36,18 @@ erDiagram
     REPAIR_JOBS ||--o{ REPAIR_JOB_EVENTS : "status history"
     TECHNICIANS ||--o{ TECHNICIAN_LEDGER : "wage ledger"
     SALES ||--o{ SALE_RETURNS : "returned"
+    CUSTOMERS ||--o{ DUE_ALLOCATIONS : "payments matched to bills"
+    PAYMENTS |o--o{ DUE_ALLOCATIONS : "source_id (collection)"
+
+    DUE_ALLOCATIONS {
+        INTEGER id PK
+        INTEGER customer_id FK
+        TEXT doc_type "sale | repair"
+        INTEGER doc_id "sales.id or repair_jobs.id"
+        REAL amount
+        TEXT source_type "collection | return | backfill"
+        INTEGER source_id "payments.id or sale_returns.id"
+    }
     SALE_RETURNS ||--|{ SALE_RETURN_ITEMS : "contains"
     SALE_ITEMS ||--o{ SALE_RETURN_ITEMS : "returned from"
 
@@ -151,6 +163,7 @@ erDiagram
         INTEGER brand_id FK
         REAL buy_price
         REAL sale_price
+        REAL dealer_price "optional, used for dealers"
         INTEGER stock "never below 0"
         INTEGER low_stock_limit
         INTEGER serialized "1 = IMEI tracked"
@@ -162,8 +175,10 @@ erDiagram
         TEXT name
         TEXT mobile
         TEXT address
-        TEXT customer_type "retail | wholesaler"
+        TEXT customer_type "retail | wholesaler (dealer: other shops and technicians)"
         REAL balance "receivable"
+        REAL credit_limit "0 = no limit"
+        REAL dealer_discount "percent off repair service charge"
         TEXT created_at
     }
     SUPPLIERS {
@@ -281,6 +296,9 @@ erDiagram
 | Repair advance is cash in at intake; at delivery the bill is settled against it (collect, due, or refund) | `routes/repairs.js` (deliver route) |
 | A sale return can't exceed sold minus already returned; a serial can be returned once | `routes/sales.js` (`createReturn`) |
 | Profit = sales (after discount) − returns + repairs (bill − parts cost − technician wage) − expenses | `routes/reports.js` (`profitSummary`) |
+| A bill's remaining due = its `due` − allocations; collections settle chosen bills, else oldest first; a return credit settles its own invoice first | `lib/dues.js` (`allocateDue`) |
+| New due beyond a customer's credit limit is refused unless a manageParties user overrides | `lib/dues.js` (`assertCreditLimit`) |
+| Statement closing balance = `customers.balance` (bills − counter payments − collections − return credits) | `routes/dealers.js` |
 
 ## Known gaps versus the legacy app
 
