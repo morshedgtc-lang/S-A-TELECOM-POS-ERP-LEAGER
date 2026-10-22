@@ -1,0 +1,19 @@
+{
+  "name": "sa-telecom-pos-api",
+  "version": "1.0.0",
+  "private": true,
+  "description": "SA Telecom POS + ERP backend (Node 24, node:sqlite, Express 5)",
+  "type": "module",
+  "engines": {
+    "node": ">=22.13"
+  },
+  "scripts": {
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.2"
+  }
+}
