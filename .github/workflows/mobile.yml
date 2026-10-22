@@ -40,6 +40,7 @@ jobs:
           java-version: 21
       - run: npm ci
       - run: npm run build
+      - run: node scripts/strip-downloads.mjs
       - run: npx cap sync android
       - run: chmod +x android/gradlew
 
@@ -90,6 +91,7 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
       - run: npm run build
+      - run: node scripts/strip-downloads.mjs
       - run: npx cap sync ios
       - name: Build for the iOS simulator (unsigned)
         working-directory: frontend/ios/App

@@ -35,6 +35,7 @@ export default function Home() {
           <a href="#services">{t('সার্ভিস')}</a>
           {site.showTracking && <a href="#track">{t('রিপেয়ার ট্র্যাক')}</a>}
           <a href="#contact">{t('যোগাযোগ')}</a>
+          <a href="/download" onClick={(e) => { e.preventDefault(); navigate('/download'); }}>{t('অ্যাপ ডাউনলোড')}</a>
         </nav>
         <PrefToggles />
         <button className="btn-rose" onClick={() => navigate(user ? '/app' : '/login')}>
@@ -101,7 +102,8 @@ export default function Home() {
       </section>
 
       <footer className="site-footer">
-        © {new Date().getFullYear()} {shop.shopName} · {t('মোবাইল সার্ভিসিং, পার্টস ও এক্সেসরিজ')}
+        © {new Date().getFullYear()} {shop.shopName} · {t('মোবাইল সার্ভিসিং, পার্টস ও এক্সেসরিজ')} ·{' '}
+        <a href="/download" onClick={(e) => { e.preventDefault(); navigate('/download'); }}><i className="fa-solid fa-mobile-screen" /> {t('অ্যাপ ডাউনলোড')}</a>
       </footer>
     </div>
   );

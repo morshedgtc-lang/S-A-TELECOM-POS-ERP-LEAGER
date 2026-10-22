@@ -23,6 +23,7 @@ import Imei from './pages/Imei';
 import Settings from './pages/Settings';
 import Website from './pages/Website';
 import Dues from './pages/Dues';
+import Download from './pages/Download';
 
 type PageId =
   | 'dashboard' | 'repairs' | 'technicians' | 'pos' | 'sales' | 'purchases' | 'products' | 'imei'
@@ -77,6 +78,7 @@ export default function App() {
   }, [ready, user, inApp, path]);
 
   if (path === '/login') return user ? null : <Login />;
+  if (path === '/download' && !isNative) return <Download />;
   if (!inApp) return isNative ? null : <Home />;
   if (!ready || !user) return <div className="splash"><i className="fa-solid fa-spinner fa-spin" /></div>;
   return <Shell user={user} page={path.split('/')[2] ?? ''} />;

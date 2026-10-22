@@ -12,6 +12,7 @@ import './styles.css';
 import './site.css';
 import './mobile.css';
 import './dealers.css';
+import './download.css';
 
 initNative();
 

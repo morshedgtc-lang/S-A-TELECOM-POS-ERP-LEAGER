@@ -1,0 +1,31 @@
+/* "Get the app" page and its printed poster */
+.download-page { min-height: 100vh; background: var(--bg); }
+.download-main { max-width: 980px; margin: 0 auto; padding: 32px 20px 48px; }
+.download-head { text-align: center; margin-bottom: 26px; }
+.download-head h1 { font-size: clamp(26px, 4vw, 38px); margin: 0 0 6px; }
+.download-head p { color: var(--muted); font-size: 17px; margin: 0; }
+.download-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 18px; }
+.dl-card {
+  background: var(--card); border: 1px solid var(--line); border-radius: 20px; padding: 22px;
+  display: grid; justify-items: center; gap: 12px; text-align: center; border-top: 6px solid var(--accent);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.1);
+}
+.dl-card.android { --accent: var(--green); }
+.dl-card.iphone { --accent: var(--rose); }
+.dl-title { font-size: 22px; font-weight: 900; display: flex; gap: 10px; align-items: center; }
+.dl-card.android .dl-title i { color: #16a34a; }
+.qr { width: 220px; height: 220px; border-radius: 14px; background: #fff; padding: 6px; border: 1px solid var(--line); }
+.qr.placeholder { background: var(--soft); }
+.dl-btn { justify-content: center; width: 100%; max-width: 280px; }
+.dl-btn small { font-weight: 600; opacity: 0.85; }
+.dl-steps { text-align: left; margin: 4px 0 0; padding-left: 20px; display: grid; gap: 6px; line-height: 1.45; width: 100%; }
+.dl-note { text-align: center; margin-top: 22px; }
+.dl-url { text-align: center; font-size: 13px; }
+
+@media print {
+  .no-print { display: none !important; }
+  .download-page, .dl-card { background: #fff !important; color: #000 !important; box-shadow: none; }
+  .download-main { padding: 0; }
+  .dl-card { break-inside: avoid; border-color: #ccc; }
+  .muted { color: #444 !important; }
+}

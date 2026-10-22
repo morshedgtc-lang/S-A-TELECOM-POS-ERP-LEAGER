@@ -166,5 +166,8 @@ if (existsSync(iosAssets)) {
   }
 }
 
+// Website / home-screen icons (iPhone wants an opaque square; it rounds the corners itself).
 writeFileSync('public/app-icon.png', encodePng(512, 512, renderIcon(512, { mask: 'rounded' })));
-console.log(`Wrote ${count} native images and public/app-icon.png`);
+writeFileSync('public/app-icon-192.png', encodePng(192, 192, renderIcon(192, { mask: 'rounded' })));
+writeFileSync('public/apple-touch-icon.png', encodePng(180, 180, renderIcon(180, { mask: 'full' })));
+console.log(`Wrote ${count} native images and the website icons in public/`);

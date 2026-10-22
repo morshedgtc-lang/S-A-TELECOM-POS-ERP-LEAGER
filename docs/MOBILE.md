@@ -58,6 +58,23 @@ iPhone apps can only be compiled on a Mac with Xcode. The GitHub workflow checks
 
 On a Mac: `cd frontend && npm install && npm run app:sync && npm run ios:open`, set the team under *Signing & Capabilities*, then *Product → Archive*. The iOS project uses Swift Package Manager, so CocoaPods is not needed.
 
+## Download page and QR codes
+
+The website has a public **Get the app** page at `/download` (linked from the home page) with:
+
+- an **Android** QR code and button that download `/downloads/sa-telecom-pos.apk` from the shop's own server;
+- an **iPhone** QR code that opens `/app` in Safari, where *Share → Add to Home Screen* installs it as an app (the site has a web manifest and home-screen icons). A real App Store app still needs an Apple Developer account.
+
+The page has a *Print poster* button. Printable QR images: `cd frontend && node scripts/make-qr.mjs https://<your-domain>` writes `qr-download-page.png` (one code for any phone), `qr-android-apk.png` and `qr-iphone-app.png` to `releases/`.
+
+### Publishing a new APK
+
+1. Build it (`npm run app:sync`, then `gradlew assembleDebug` in `frontend/android`) after raising `versionCode`/`versionName` in `android/app/build.gradle`.
+2. Copy it to `frontend/public/downloads/sa-telecom-pos.apk` and update `frontend/public/downloads/app.json` (version, versionCode, size, date).
+3. Deploy the website. The QR codes never change, because the file name stays the same.
+
+`app:sync` removes `dist/downloads` before copying the web build into the apps, so an APK never contains the previous APK.
+
 ## Changing the icon
 
 `frontend/scripts/make-icons.mjs` draws the icon and splash screens (no image tools needed). Edit the colours or shapes there and run `npm run app:icons`.

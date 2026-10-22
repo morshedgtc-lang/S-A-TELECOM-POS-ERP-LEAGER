@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "app:sync": "npm run build && cap sync",
+    "app:sync": "npm run build && node scripts/strip-downloads.mjs && cap sync",
     "app:icons": "node scripts/make-icons.mjs",
     "android:open": "cap open android",
     "ios:open": "cap open ios"
@@ -22,11 +22,13 @@
     "@capacitor/status-bar": "^8.0.4",
     "@fontsource/hind-siliguri": "^5.3.0",
     "@fortawesome/fontawesome-free": "^6.5.2",
+    "qrcode": "^1.5.4",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
     "@capacitor/cli": "^8.5.3",
+    "@types/qrcode": "^1.5.6",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.4",
