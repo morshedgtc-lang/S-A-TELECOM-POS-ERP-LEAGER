@@ -35,6 +35,10 @@ npm run dev
 
 Open http://localhost:5173 for the public website, or http://localhost:5173/login to sign in. Sign in with `owner` and the password from `OWNER_PASSWORD` (default `change-me-now` — **change it before any real use**). Set `OWNER_PASSWORD` in `backend/.env` or the environment before the first start, because the owner is created on first boot.
 
+## Android and iPhone apps
+
+The same app runs on phones (Capacitor). Android APKs are built by the **Mobile apps** GitHub workflow or locally; iPhone builds need a Mac and an Apple Developer account. See [docs/MOBILE.md](docs/MOBILE.md).
+
 ## Tests
 
 ```bash

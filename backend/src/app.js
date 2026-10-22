@@ -2,7 +2,7 @@ import express from 'express';
 import { existsSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { config } from './config.js';
+import { config, NATIVE_ORIGINS } from './config.js';
 import { requireAuth } from './lib/auth.js';
 import { HttpError } from './lib/http.js';
 import { authRouter, changeOwnPassword, usersRouter } from './routes/auth.js';
@@ -20,8 +20,12 @@ export function createApp(db) {
   app.set('trust proxy', 1); // Railway and most hosts sit behind one proxy; needed for per-IP limits
   app.use(express.json({ limit: '4mb' }));
 
+  // Auth uses a bearer token, not cookies, so allowing the app origins does not expose sessions to CSRF.
+  const allowed = new Set([...config.corsOrigins, ...NATIVE_ORIGINS]);
   app.use((req, res, next) => {
-    res.set('Access-Control-Allow-Origin', config.corsOrigin);
+    const origin = req.get('origin');
+    if (origin && allowed.has(origin)) res.set('Access-Control-Allow-Origin', origin);
+    res.set('Vary', 'Origin');
     res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     res.set('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, OPTIONS');
     if (req.method === 'OPTIONS') return res.sendStatus(204);

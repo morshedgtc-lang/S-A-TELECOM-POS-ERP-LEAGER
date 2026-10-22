@@ -164,3 +164,10 @@ test('dashboard summarises today and the audit trail records writes', async () =
   assert.equal(audit.status, 200);
   assert.ok(audit.data.length > 0);
 });
+
+test('CORS allows the mobile app origins and not random sites', async () => {
+  const pre = (origin) => fetch(`${base}/auth/login`, { method: 'OPTIONS', headers: { Origin: origin } });
+  assert.equal((await pre('capacitor://localhost')).headers.get('access-control-allow-origin'), 'capacitor://localhost');
+  assert.equal((await pre('https://localhost')).headers.get('access-control-allow-origin'), 'https://localhost');
+  assert.equal((await pre('https://evil.example')).headers.get('access-control-allow-origin'), null);
+});

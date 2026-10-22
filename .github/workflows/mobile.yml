@@ -1,0 +1,99 @@
+name: Mobile apps
+
+# Builds the Android APK and checks the iOS app compiles. Run it from the Actions tab
+# ("Run workflow"); it also runs when the frontend changes on main.
+on:
+  workflow_dispatch:
+    inputs:
+      server_url:
+        description: "Shop server baked into the app (optional), e.g. https://your-shop.up.railway.app"
+        required: false
+        default: ""
+  push:
+    branches: [main]
+    paths:
+      - "frontend/**"
+      - ".github/workflows/mobile.yml"
+
+env:
+  # Optional: a repository variable SERVER_URL saves staff typing the server address.
+  VITE_SERVER_URL: ${{ inputs.server_url || vars.SERVER_URL }}
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    env:
+      HAS_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - run: npm ci
+      - run: npm run build
+      - run: npx cap sync android
+      - run: chmod +x android/gradlew
+
+      - name: Build debug APK (install directly on phones)
+        working-directory: frontend/android
+        run: ./gradlew assembleDebug --no-daemon
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sa-telecom-pos-android-debug
+          path: frontend/android/app/build/outputs/apk/debug/app-debug.apk
+
+      # Signed release APK + Play Store bundle; skipped unless the keystore secrets are set.
+      - name: Build signed release
+        if: env.HAS_KEYSTORE == 'true'
+        working-directory: frontend/android
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
+          export ANDROID_KEYSTORE_PATH="$RUNNER_TEMP/release.jks"
+          ./gradlew assembleRelease bundleRelease --no-daemon
+
+      - uses: actions/upload-artifact@v4
+        if: env.HAS_KEYSTORE == 'true'
+        with:
+          name: sa-telecom-pos-android-release
+          path: |
+            frontend/android/app/build/outputs/apk/release/app-release.apk
+            frontend/android/app/build/outputs/bundle/release/app-release.aab
+
+  ios:
+    # Proves the iPhone app compiles. Installing on iPhones needs an Apple Developer
+    # account and signing (see docs/MOBILE.md), which this unsigned build skips.
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run build
+      - run: npx cap sync ios
+      - name: Build for the iOS simulator (unsigned)
+        working-directory: frontend/ios/App
+        run: |
+          xcodebuild -project App.xcodeproj -scheme App -configuration Debug \
+            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO build

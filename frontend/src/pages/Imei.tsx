@@ -23,7 +23,7 @@ export default function Imei() {
     <section>
       <h2><i className="fa-solid fa-mobile-screen-button" /> {t('IMEI লুকআপ')}</h2>
       <form className="inline card" onSubmit={search}>
-        <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('IMEI / সিরিয়াল স্ক্যান বা টাইপ করুন')} inputMode="numeric" style={{ flex: 1 }} />
+        <input autoFocus required minLength={3} value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('IMEI / সিরিয়াল স্ক্যান বা টাইপ করুন')} inputMode="numeric" style={{ flex: 1 }} />
         <button><i className="fa-solid fa-magnifying-glass" /> {t('খুঁজুন')}</button>
       </form>
       {error && <div className="error">{error}</div>}

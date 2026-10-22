@@ -1,7 +1,43 @@
 import { money } from './api';
 import { t } from './i18n';
 import { fmtDate, STATUS } from './labels';
+import { isNative, shareText } from './native';
 import type { RepairDetail, SaleDetail, ShopSettings } from './types';
+
+const LINE = '--------------------------------';
+const textHeader = (s: ShopSettings) => [s.shopName, s.shopAddress, s.shopPhone].filter(Boolean).join('\n');
+
+/** Plain-text slip for the phone share sheet (the apps cannot open a print window). */
+function saleText(sale: SaleDetail, shop: ShopSettings) {
+  const items = sale.items.flatMap((i) => [
+    i.productName,
+    `  ${i.qty} x ${money(i.unitPrice)} = ${money(i.lineTotal)}`,
+    i.serials.length ? `  IMEI: ${i.serials.join(', ')}` : '',
+  ]);
+  return [
+    textHeader(shop), LINE,
+    `${t('বিক্রয় ইনভয়েস')}: ${sale.invoiceNo}`, fmtDate(sale.createdAt), `${t('কাস্টমার')}: ${sale.customerName}`, LINE,
+    ...items, LINE,
+    sale.discount ? `${t('ডিসকাউন্ট')}: -${money(sale.discount)}` : '',
+    `${t('মোট')}: ৳${money(sale.total)}`, `${t('পরিশোধ')}: ৳${money(sale.paid)}`,
+    sale.due ? `${t('বাকি')}: ৳${money(sale.due)}` : '', LINE, shop.invoiceFooter,
+  ].filter(Boolean).join('\n');
+}
+
+function jobText(job: RepairDetail, shop: ShopSettings) {
+  const delivered = job.status === 'delivered';
+  return [
+    textHeader(shop), LINE,
+    `${t('সার্ভিস জব কার্ড')}: ${job.jobNo}`, fmtDate(job.createdAt),
+    `${t('কাস্টমার')}: ${job.customerName}${job.customerMobile ? ` (${job.customerMobile})` : ''}`,
+    `${t('ডিভাইস')}: ${job.device}`, job.imei ? `IMEI: ${job.imei}` : '',
+    `${t('সমস্যা')}: ${job.problem}`, `${t('স্ট্যাটাস')}: ${STATUS[job.status].label}`, LINE,
+    delivered ? `${t('মোট বিল')}: ৳${money(job.total)}` : `${t('আনুমানিক খরচ')}: ৳${money(job.estimatedCost)}`,
+    `${t('অগ্রিম')}: ৳${money(job.advance)}`,
+    delivered && job.due ? `${t('বাকি')}: ৳${money(job.due)}` : '',
+    shop.repairTerms ? LINE : '', shop.repairTerms, shop.invoiceFooter,
+  ].filter(Boolean).join('\n');
+}
 
 const esc = (v: unknown) =>
   String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
@@ -44,6 +80,7 @@ function open(title: string, body: string) {
 const row = (label: string, value: string, cls = '') => `<tr class="${cls}"><td>${label}</td><td class="r">${value}</td></tr>`;
 
 export function printSaleInvoice(sale: SaleDetail, shop: ShopSettings) {
+  if (isNative) return void shareText(sale.invoiceNo, saleText(sale, shop));
   const items = sale.items.map((i) => `
     <tr><td colspan="2" class="b">${esc(i.productName)}</td></tr>
     ${i.serials.length ? `<tr><td colspan="2" class="muted">IMEI: ${esc(i.serials.join(', '))}</td></tr>` : ''}
@@ -65,6 +102,7 @@ export function printSaleInvoice(sale: SaleDetail, shop: ShopSettings) {
 }
 
 export function printJobCard(job: RepairDetail, shop: ShopSettings) {
+  if (isNative) return void shareText(job.jobNo, jobText(job, shop));
   const delivered = job.status === 'delivered';
   const parts = job.parts.filter((p) => !p.restocked);
   open(job.jobNo, `${header(shop)}

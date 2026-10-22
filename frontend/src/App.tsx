@@ -3,6 +3,7 @@ import { api, money } from './api';
 import { useAuth } from './auth';
 import Modal from './components/Modal';
 import { PrefToggles, t } from './i18n';
+import { getServer, isNative } from './native';
 import { navigate, usePath } from './router';
 import { ROLE_LABEL } from './labels';
 import type { Account, Action, User } from './types';
@@ -52,6 +53,14 @@ const NAV: NavItem[] = [
   { id: 'settings', label: 'শপ সেটিংস / স্টাফ', icon: 'fa-gear', section: 'ওনার ও প্রশাসন', needs: ['manageSettings', 'manageStaff'] },
 ];
 
+/** Bottom tab bar on phones: the four most used pages plus "More" (opens the full menu). */
+const TABS: { id: PageId; label: string; icon: string }[] = [
+  { id: 'dashboard', label: 'হোম', icon: 'fa-house' },
+  { id: 'repairs', label: 'সার্ভিস', icon: 'fa-screwdriver-wrench' },
+  { id: 'pos', label: 'বিক্রি', icon: 'fa-cash-register' },
+  { id: 'products', label: 'স্টক', icon: 'fa-boxes-stacked' },
+];
+
 export default function App() {
   const { user, ready } = useAuth();
   const path = usePath();
@@ -61,10 +70,12 @@ export default function App() {
     if (!ready) return;
     if (inApp && !user) navigate('/login', true);
     if (path === '/login' && user) navigate('/app', true);
+    // The phone apps are for staff only: skip the public website.
+    if (isNative && !inApp && path !== '/login') navigate(user ? '/app' : '/login', true);
   }, [ready, user, inApp, path]);
 
   if (path === '/login') return user ? null : <Login />;
-  if (!inApp) return <Home />;
+  if (!inApp) return isNative ? null : <Home />;
   if (!ready || !user) return <div className="splash"><i className="fa-solid fa-spinner fa-spin" /></div>;
   return <Shell user={user} page={path.split('/')[2] ?? ''} />;
 }
@@ -107,7 +118,7 @@ function Shell({ user, page }: { user: User; page: string }) {
             </button>
             {userMenu && (
               <div className="dropdown" onMouseLeave={() => setUserMenu(false)}>
-                <button onClick={() => { window.open('/', '_blank'); setUserMenu(false); }}><i className="fa-solid fa-globe" /> {t('ওয়েবসাইট দেখুন')}</button>
+                <button onClick={() => { window.open(isNative ? `${getServer()}/` : '/', '_blank'); setUserMenu(false); }}><i className="fa-solid fa-globe" /> {t('ওয়েবসাইট দেখুন')}</button>
                 <button onClick={() => { setPwOpen(true); setUserMenu(false); }}><i className="fa-solid fa-key" /> {t('পাসওয়ার্ড পরিবর্তন')}</button>
                 <button onClick={() => { logout(); navigate('/login'); }}><i className="fa-solid fa-right-from-bracket" /> {t('লগআউট')}</button>
               </div>
@@ -148,6 +159,16 @@ function Shell({ user, page }: { user: User; page: string }) {
           {current.id === 'settings' && <Settings />}
         </main>
       </div>
+      <nav className="tabbar" aria-label="Quick menu">
+        {TABS.filter((tab) => visible.some((n) => n.id === tab.id)).map((tab) => (
+          <button key={tab.id} className={tab.id === current.id ? 'on' : ''} onClick={() => go(tab.id)}>
+            <i className={`fa-solid ${tab.icon}`} /><span>{t(tab.label)}</span>
+          </button>
+        ))}
+        <button className={menuOpen ? 'on' : ''} onClick={() => setMenuOpen(!menuOpen)}>
+          <i className="fa-solid fa-grip" /><span>{t('আরও')}</span>
+        </button>
+      </nav>
       {pwOpen && <ChangePassword onClose={() => setPwOpen(false)} />}
     </div>
   );

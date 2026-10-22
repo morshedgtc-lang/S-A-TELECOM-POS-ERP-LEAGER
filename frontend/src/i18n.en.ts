@@ -367,4 +367,12 @@ export const EN: Record<string, string> = {
   'সার্ভিস জব কার্ড': 'Repair job card',
   'কাস্টমার স্বাক্ষর': 'Customer signature',
   'দোকানের স্বাক্ষর': 'Shop signature',
+  // Mobile app
+  'আরও': 'More',
+  'হোম': 'Home',
+  'বিক্রি': 'Sell',
+  'সার্ভারের ঠিকানা': 'Server address',
+  'সার্ভারের ঠিকানা দিন': 'Enter the server address',
+  'যাচাই করুন': 'Check',
+  'সার্ভারে সংযোগ হয়নি — ঠিকানা ও ইন্টারনেট দেখুন': 'Could not reach the server — check the address and internet',
 };

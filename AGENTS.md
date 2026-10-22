@@ -48,6 +48,12 @@ Environment variables (see `backend/.env.example`): `PORT`, `DB_FILE`, `JWT_SECR
 - Colours come from the CSS variables in `styles.css` (`--rose`, `--green`, `--red`, …); both `data-theme="dark"` and light must stay readable.
 - Paths: `/` public site, `/login`, `/app/<page>`. The server returns `index.html` for every non-API path.
 
+## Mobile apps
+
+- `frontend/android` and `frontend/ios` are Capacitor projects wrapping the same build. See `docs/MOBILE.md`.
+- After frontend changes run `npm run app:sync` in `frontend/`. Never edit `android/app/src/main/assets/public` or `ios/App/App/public` (generated).
+- Code that behaves differently in the apps checks `isNative` from `src/native.ts`; API calls go through `apiBase()` there.
+
 ## Code style
 
 - Backend: ES modules, no build step, plain JavaScript. Route files export a factory: `xxxRouter(db)`.

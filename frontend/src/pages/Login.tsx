@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { api } from '../api';
 import { useAuth } from '../auth';
 import { PrefToggles, t } from '../i18n';
+import { getServer, isNative, normalizeServer, setServer } from '../native';
 import { navigate } from '../router';
 import type { PublicSite } from '../types';
 
@@ -13,6 +14,23 @@ export default function Login() {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [shopName, setShopName] = useState('SA Telecom');
+  const [server, setServerInput] = useState(getServer());
+  const [serverState, setServerState] = useState<'idle' | 'ok' | 'bad'>('idle');
+
+  /** App only: checks the shop server answers before signing in. */
+  async function checkServer() {
+    const url = normalizeServer(server);
+    setServerInput(url);
+    try {
+      const res = await fetch(`${url}/api/health`);
+      if (!res.ok) throw new Error();
+      setServer(url);
+      setServerState('ok');
+      api<PublicSite>('GET', '/public/site').then((d) => setShopName(d.shop.shopName)).catch(() => undefined);
+    } catch {
+      setServerState('bad');
+    }
+  }
 
   useEffect(() => {
     api<PublicSite>('GET', '/public/site').then((d) => setShopName(d.shop.shopName)).catch(() => undefined);
@@ -23,6 +41,10 @@ export default function Login() {
     setError('');
     setBusy(true);
     try {
+      if (isNative) {
+        if (!server.trim()) throw new Error(t('সার্ভারের ঠিকানা দিন'));
+        setServer(server);
+      }
       await login(userId.trim(), password);
       navigate('/app', true);
     } catch (err) {
@@ -35,7 +57,7 @@ export default function Login() {
   return (
     <div className="login-page">
       <div className="login-brand">
-        <button className="back-link" onClick={() => navigate('/')}><i className="fa-solid fa-arrow-left" /> {t('হোম পেজ')}</button>
+        {!isNative && <button className="back-link" onClick={() => navigate('/')}><i className="fa-solid fa-arrow-left" /> {t('হোম পেজ')}</button>}
         <div>
           <span className="brand-mark big"><i className="fa-solid fa-mobile-screen-button" /></span>
           <h1>{shopName}</h1>
@@ -51,6 +73,18 @@ export default function Login() {
         <div className="login-tools"><PrefToggles /></div>
         <form className="login-card" onSubmit={submit}>
           <h2>{t('লগইন করুন')}</h2>
+          {isNative && (
+            <label>{t('সার্ভারের ঠিকানা')}
+              <div className="pw-field">
+                <input value={server} onChange={(e) => { setServerInput(e.target.value); setServerState('idle'); }}
+                  placeholder="your-shop.up.railway.app" inputMode="url" autoCapitalize="none" autoCorrect="off" />
+                <button type="button" className={serverState === 'ok' ? 'ghost ok-text' : 'ghost'} onClick={checkServer} aria-label={t('যাচাই করুন')}>
+                  <i className={serverState === 'ok' ? 'fa-solid fa-circle-check' : serverState === 'bad' ? 'fa-solid fa-circle-xmark' : 'fa-solid fa-plug'} />
+                </button>
+              </div>
+              {serverState === 'bad' && <small className="warn">{t('সার্ভারে সংযোগ হয়নি — ঠিকানা ও ইন্টারনেট দেখুন')}</small>}
+            </label>
+          )}
           <p className="muted">{t('আপনার ইউজার ID ও পাসওয়ার্ড দিন')}</p>
           <label>{t('ইউজার ID')}
             <input value={userId} onChange={(e) => setUserId(e.target.value)} autoComplete="username" required autoFocus />

@@ -1,4 +1,4 @@
-const BASE = import.meta.env.VITE_API_URL ?? '/api';
+import { apiBase } from './native';
 const TOKEN_KEY = 'sa_pos_token';
 
 function readToken(): string | null {
@@ -31,7 +31,7 @@ export async function api<T>(method: 'GET' | 'POST' | 'PUT' | 'PATCH', path: str
   if (body !== undefined) headers['Content-Type'] = 'application/json';
   if (token) headers.Authorization = `Bearer ${token}`;
 
-  const res = await fetch(`${BASE}${path}`, {
+  const res = await fetch(`${apiBase()}${path}`, {
     method,
     headers,
     body: body === undefined ? undefined : JSON.stringify(body),
