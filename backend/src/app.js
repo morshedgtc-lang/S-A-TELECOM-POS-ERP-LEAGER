@@ -1,4 +1,7 @@
 import express from 'express';
+import { existsSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { config } from './config.js';
 import { requireAuth } from './lib/auth.js';
 import { HttpError } from './lib/http.js';
@@ -39,6 +42,13 @@ export function createApp(db) {
   api.use('/dashboard', dashboardRouter(db));
   api.use('/audit', auditRouter(db));
   app.use('/api', api);
+  app.use('/api', (_req, res) => res.status(404).json({ error: 'Not found' }));
+
+  const webDir = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', 'frontend', 'dist');
+  if (existsSync(join(webDir, 'index.html'))) {
+    app.use(express.static(webDir));
+    app.get(/^(?!\/api\/).*/, (_req, res) => res.sendFile(join(webDir, 'index.html')));
+  }
 
   app.use((_req, res) => res.status(404).json({ error: 'Not found' }));
 

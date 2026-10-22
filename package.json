@@ -1,0 +1,13 @@
+{
+  "name": "sa-telecom-pos",
+  "version": "1.0.0",
+  "private": true,
+  "description": "SA Telecom POS + ERP. Root scripts are used by Railway (Nixpacks) to build and start the app.",
+  "engines": {
+    "node": ">=22.13"
+  },
+  "scripts": {
+    "build": "npm --prefix frontend install --include=dev && npm --prefix frontend run build && npm --prefix backend install --include=dev",
+    "start": "node backend/src/server.js"
+  }
+}
